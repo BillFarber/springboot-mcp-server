@@ -4,6 +4,7 @@ import com.example.mcpserver.model.McpRequest;
 import com.example.mcpserver.model.McpResponse;
 import com.example.mcpserver.service.McpService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
@@ -16,6 +17,9 @@ import java.util.Map;
 public class McpServerApplication {
 
     public static void main(String[] args) {
+        // Load .env file if it exists
+        loadEnvironmentVariables();
+
         // Check if stdio mode is requested
         boolean stdioMode = args.length > 0 && "stdio".equals(args[0]);
 
@@ -156,10 +160,49 @@ public class McpServerApplication {
                 String uri = (String) params.get("uri");
                 yield mcpService.readResource(uri);
             }
+            case "resources/subscribe" -> {
+                String uri = (String) params.get("uri");
+                String clientId = params.containsKey("clientId") ? (String) params.get("clientId") : "default-client";
+                System.err.println("🎸 Epic subscription request for URI: " + uri);
+                yield mcpService.subscribeToResource(uri, clientId);
+            }
+            case "resources/unsubscribe" -> {
+                String subscriptionId = (String) params.get("subscriptionId");
+                System.err.println("🛑 Unsubscription request for ID: " + subscriptionId);
+                yield mcpService.unsubscribeFromResource(subscriptionId);
+            }
+            case "resources/list_subscriptions" -> {
+                System.err.println("📋 Listing all subscriptions");
+                yield mcpService.listSubscriptions();
+            }
+            case "resources/simulate_update" -> {
+                String uri = (String) params.get("uri");
+                System.err.println("🔥 Simulating resource update for: " + uri);
+                yield mcpService.simulateResourceUpdate(uri);
+            }
             default -> {
                 System.err.println("Unknown method: " + method);
                 throw new IllegalArgumentException("Unknown method: " + method);
             }
         };
+    }
+
+    private static void loadEnvironmentVariables() {
+        try {
+            Dotenv dotenv = Dotenv.configure()
+                    .directory(".")
+                    .ignoreIfMalformed()
+                    .ignoreIfMissing()
+                    .load();
+
+            // Set environment variables for Spring to pick up
+            dotenv.entries().forEach(entry -> {
+                if (System.getProperty(entry.getKey()) == null) {
+                    System.setProperty(entry.getKey(), entry.getValue());
+                }
+            });
+        } catch (Exception e) {
+            System.err.println("Warning: Could not load .env file: " + e.getMessage());
+        }
     }
 }

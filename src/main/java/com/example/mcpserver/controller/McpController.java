@@ -76,6 +76,20 @@ public class McpController {
                 String uri = (String) params.get("uri");
                 yield mcpService.readResource(uri);
             }
+            case "resources/subscribe" -> {
+                String uri = (String) params.get("uri");
+                String clientId = params.containsKey("clientId") ? (String) params.get("clientId") : "http-client";
+                yield mcpService.subscribeToResource(uri, clientId);
+            }
+            case "resources/unsubscribe" -> {
+                String subscriptionId = (String) params.get("subscriptionId");
+                yield mcpService.unsubscribeFromResource(subscriptionId);
+            }
+            case "resources/list_subscriptions" -> mcpService.listSubscriptions();
+            case "resources/simulate_update" -> {
+                String uri = (String) params.get("uri");
+                yield mcpService.simulateResourceUpdate(uri);
+            }
             default -> throw new IllegalArgumentException("Unknown method: " + method);
         };
     }
@@ -91,5 +105,43 @@ public class McpController {
     @GetMapping("/capabilities")
     public ResponseEntity<Object> capabilities() {
         return ResponseEntity.ok(mcpService.getServerInfo());
+    }
+
+    // 🎸 Epic 2112-Style Subscription Endpoints! 🎸
+
+    @PostMapping("/subscribe")
+    public ResponseEntity<Map<String, Object>> subscribe(@RequestParam String uri,
+            @RequestParam(defaultValue = "http-client") String clientId) {
+        logger.info("🎸 Epic subscription request for URI: {} from client: {}", uri, clientId);
+        Map<String, Object> result = mcpService.subscribeToResource(uri, clientId);
+        return ResponseEntity.ok(result);
+    }
+
+    @DeleteMapping("/subscribe/{subscriptionId}")
+    public ResponseEntity<Map<String, Object>> unsubscribe(@PathVariable String subscriptionId) {
+        logger.info("🛑 Unsubscription request for ID: {}", subscriptionId);
+        Map<String, Object> result = mcpService.unsubscribeFromResource(subscriptionId);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/subscriptions")
+    public ResponseEntity<Map<String, Object>> listSubscriptions() {
+        logger.info("📋 Listing all epic subscriptions");
+        Map<String, Object> result = mcpService.listSubscriptions();
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/subscriptions/{subscriptionId}")
+    public ResponseEntity<Map<String, Object>> getSubscription(@PathVariable String subscriptionId) {
+        logger.info("🔍 Getting subscription details for: {}", subscriptionId);
+        Map<String, Object> result = mcpService.getSubscriptionDetails(subscriptionId);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/simulate-update")
+    public ResponseEntity<Map<String, Object>> simulateUpdate(@RequestParam String uri) {
+        logger.info("🔥 Simulating resource update for: {}", uri);
+        Map<String, Object> result = mcpService.simulateResourceUpdate(uri);
+        return ResponseEntity.ok(result);
     }
 }

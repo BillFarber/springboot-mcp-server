@@ -3,6 +3,8 @@ package com.example.mcpserver.service;
 import com.example.mcpserver.model.Tool;
 import com.example.mcpserver.model.Resource;
 import com.example.mcpserver.model.ResourceTemplate;
+import com.example.mcpserver.model.ResourceSubscription;
+import com.example.mcpserver.model.ResourceNotification;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Service
 public class McpService {
@@ -27,6 +30,10 @@ public class McpService {
 
     // Track running operations that can be cancelled
     private final Map<Object, Boolean> runningOperations = new ConcurrentHashMap<>();
+
+    // Track resource subscriptions for real-time updates 🎸
+    private final Map<String, ResourceSubscription> resourceSubscriptions = new ConcurrentHashMap<>();
+    private final Map<String, Set<String>> uriToSubscriptions = new ConcurrentHashMap<>();
 
     public Map<String, Object> getServerInfo() {
         return getServerInfo("2024-11-05"); // Default protocol version
@@ -203,85 +210,155 @@ public class McpService {
     public Map<String, Object> callTool(String toolName, Map<String, Object> arguments) {
         Map<String, Object> result = new HashMap<>();
 
-        switch (toolName) {
-            case "generate_text":
-                result = generateText(arguments);
-                break;
-            case "analyze_data":
-                result = analyzeData(arguments);
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown tool: " + toolName);
+        try {
+            switch (toolName) {
+                case "generate_text":
+                    result = generateText(arguments);
+                    break;
+                case "analyze_data":
+                    result = analyzeData(arguments);
+                    break;
+                default:
+                    // 🎸 Epic 2112-style error handling instead of throwing! 🎸
+                    logger.warn("🔥 Unknown tool requested: {}", toolName);
+                    result.put("isError", true);
+                    result.put("content", "🎸 Epic tool not found! Available tools: generate_text, analyze_data");
+                    result.put("mimeType", "text/plain");
+                    result.put("error", "Unknown tool: " + toolName);
+                    result.put("availableTools", List.of("generate_text", "analyze_data"));
+                    return result;
+            }
+        } catch (Exception e) {
+            // 🎸 Epic error handling for any other issues! 🎸
+            logger.error("💥 Tool execution failed for {}: {}", toolName, e.getMessage(), e);
+            result.put("isError", true);
+            result.put("content", "🔥 Tool execution failed: " + e.getMessage());
+            result.put("mimeType", "text/plain");
+            result.put("error", e.getMessage());
+            result.put("toolName", toolName);
         }
 
         return result;
     }
 
     private Map<String, Object> generateText(Map<String, Object> arguments) {
-        String prompt = (String) arguments.get("prompt");
-
         Map<String, Object> result = new HashMap<>();
 
-        logger.debug("ChatClient is null: {}", chatClient == null);
-        logger.debug("Available ChatClient beans: {}",
-                applicationContext.getBeansOfType(ChatClient.class).keySet());
-        logger.debug("All beans containing 'chat' or 'openai': {}",
-                applicationContext.getBeanDefinitionNames().length > 0
-                        ? Arrays.stream(applicationContext.getBeanDefinitionNames())
-                                .filter(name -> name.toLowerCase().contains("chat") ||
-                                        name.toLowerCase().contains("openai"))
-                                .toList()
-                        : "No beans found");
-        if (chatClient != null) {
-            try {
-                logger.debug("Calling Azure OpenAI with prompt: {}", prompt);
-                ChatResponse response = chatClient.call(new org.springframework.ai.chat.prompt.Prompt(prompt));
-                result.put("content", response.getResult().getOutput().getContent());
-                result.put("isError", false);
-                logger.debug("Successfully generated text");
-            } catch (Exception e) {
-                logger.error("Error generating text", e);
-                result.put("content", "Error generating text: " + e.getMessage());
+        try {
+            // 🎸 Epic defensive coding! 🎸
+            if (arguments == null) {
+                result.put("content", "🔥 No arguments provided for text generation!");
                 result.put("isError", true);
+                result.put("mimeType", "text/plain");
+                return result;
             }
-        } else {
-            // Fallback when AI client is not configured
-            logger.warn("ChatClient is null - using mock response");
-            result.put("content", "AI client not configured. This is a mock response for prompt: " + prompt);
-            result.put("isError", false);
+
+            String prompt = (String) arguments.get("prompt");
+            if (prompt == null || prompt.trim().isEmpty()) {
+                result.put("content", "🎸 Prompt is required for epic text generation!");
+                result.put("isError", true);
+                result.put("mimeType", "text/plain");
+                return result;
+            }
+
+            logger.debug("ChatClient is null: {}", chatClient == null);
+            logger.debug("Available ChatClient beans: {}",
+                    applicationContext.getBeansOfType(ChatClient.class).keySet());
+            logger.debug("All beans containing 'chat' or 'openai': {}",
+                    applicationContext.getBeanDefinitionNames().length > 0
+                            ? Arrays.stream(applicationContext.getBeanDefinitionNames())
+                                    .filter(name -> name.toLowerCase().contains("chat") ||
+                                            name.toLowerCase().contains("openai"))
+                                    .toList()
+                            : "No beans found");
+            if (chatClient != null) {
+                try {
+                    logger.debug("Calling Azure OpenAI with prompt: {}", prompt);
+                    ChatResponse response = chatClient.call(new org.springframework.ai.chat.prompt.Prompt(prompt));
+                    result.put("content", response.getResult().getOutput().getContent());
+                    result.put("isError", false);
+                    logger.debug("Successfully generated text");
+                } catch (Exception e) {
+                    logger.error("Error generating text", e);
+                    result.put("content", "🔥 Epic AI generation failed: " + e.getMessage());
+                    result.put("isError", true);
+                }
+            } else {
+                // Fallback when AI client is not configured
+                logger.warn("ChatClient is null - using mock response");
+                result.put("content", "🎸 AI client not configured. Epic mock response for prompt: " + prompt);
+                result.put("isError", false);
+            }
+
+            result.put("mimeType", "text/plain");
+        } catch (Exception e) {
+            logger.error("💥 Unexpected error in generateText", e);
+            result.put("content", "🔥 Unexpected error: " + e.getMessage());
+            result.put("isError", true);
+            result.put("mimeType", "text/plain");
         }
 
-        result.put("mimeType", "text/plain");
         return result;
     }
 
     private Map<String, Object> analyzeData(Map<String, Object> arguments) {
-        String data = (String) arguments.get("data");
-        String analysisType = (String) arguments.get("analysisType");
-
         Map<String, Object> result = new HashMap<>();
 
-        if (chatClient != null) {
-            try {
-                String prompt = String.format(
-                        "Perform a %s analysis on the following data:\n\n%s\n\nProvide insights and key findings.",
-                        analysisType, data);
-                ChatResponse response = chatClient.call(new org.springframework.ai.chat.prompt.Prompt(prompt));
-                result.put("content", response.getResult().getOutput().getContent());
-                result.put("isError", false);
-            } catch (Exception e) {
-                result.put("content", "Error analyzing data: " + e.getMessage());
+        try {
+            // 🎸 Epic defensive coding! 🎸
+            if (arguments == null) {
+                result.put("content", "🔥 No arguments provided for data analysis!");
                 result.put("isError", true);
+                result.put("mimeType", "text/markdown");
+                return result;
             }
-        } else {
-            // Fallback when AI client is not configured
-            result.put("content", String.format(
-                    "AI client not configured. Mock %s analysis for data: %s",
-                    analysisType, data.length() > 100 ? data.substring(0, 100) + "..." : data));
-            result.put("isError", false);
+
+            String data = (String) arguments.get("data");
+            String analysisType = (String) arguments.get("analysisType");
+
+            if (data == null || data.trim().isEmpty()) {
+                result.put("content", "🎸 Data is required for epic analysis!");
+                result.put("isError", true);
+                result.put("mimeType", "text/markdown");
+                return result;
+            }
+
+            if (analysisType == null || analysisType.trim().isEmpty()) {
+                result.put("content", "🔥 Analysis type is required! Choose: summary, trends, or insights");
+                result.put("isError", true);
+                result.put("mimeType", "text/markdown");
+                return result;
+            }
+
+            if (chatClient != null) {
+                try {
+                    String prompt = String.format(
+                            "Perform a %s analysis on the following data:\n\n%s\n\nProvide insights and key findings.",
+                            analysisType, data);
+                    ChatResponse response = chatClient.call(new org.springframework.ai.chat.prompt.Prompt(prompt));
+                    result.put("content", response.getResult().getOutput().getContent());
+                    result.put("isError", false);
+                } catch (Exception e) {
+                    logger.error("💥 AI analysis failed", e);
+                    result.put("content", "🔥 Epic AI analysis failed: " + e.getMessage());
+                    result.put("isError", true);
+                }
+            } else {
+                // Fallback when AI client is not configured
+                result.put("content", String.format(
+                        "🎸 AI client not configured. Epic mock %s analysis for data: %s",
+                        analysisType, data.length() > 100 ? data.substring(0, 100) + "..." : data));
+                result.put("isError", false);
+            }
+
+            result.put("mimeType", "text/markdown");
+        } catch (Exception e) {
+            logger.error("💥 Unexpected error in analyzeData", e);
+            result.put("content", "🔥 Unexpected analysis error: " + e.getMessage());
+            result.put("isError", true);
+            result.put("mimeType", "text/markdown");
         }
 
-        result.put("mimeType", "text/markdown");
         return result;
     }
 
@@ -447,6 +524,206 @@ public class McpService {
             result.put("cancelled", false);
             result.put("error", "No progress token provided");
             logger.warn("Cancellation request without progress token");
+        }
+
+        return result;
+    }
+
+    /**
+     * 🎸 Epic resource subscription management - 2112 style! 🎸
+     * Subscribe to real-time resource updates
+     */
+    public Map<String, Object> subscribeToResource(String uri, String clientId) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            // Generate unique subscription ID - Rush style timestamp!
+            String subscriptionId = "sub_" + System.currentTimeMillis() + "_"
+                    + UUID.randomUUID().toString().substring(0, 8);
+
+            // Create the subscription
+            ResourceSubscription subscription = new ResourceSubscription(uri, clientId, subscriptionId);
+            resourceSubscriptions.put(subscriptionId, subscription);
+
+            // Track URI to subscription mapping for efficient notifications
+            uriToSubscriptions.computeIfAbsent(uri, k -> ConcurrentHashMap.newKeySet()).add(subscriptionId);
+
+            result.put("subscriptionId", subscriptionId);
+            result.put("uri", uri);
+            result.put("status", "subscribed");
+            result.put("message", "🎸 Rocking real-time updates for " + uri + "!");
+
+            logger.info("🚀 Epic subscription created: {} for URI: {} by client: {}", subscriptionId, uri, clientId);
+
+        } catch (Exception e) {
+            logger.error("💥 Subscription failed for URI: {}", uri, e);
+            result.put("error", "Subscription failed: " + e.getMessage());
+            result.put("status", "failed");
+        }
+
+        return result;
+    }
+
+    /**
+     * 🎸 Unsubscribe from resource updates
+     */
+    public Map<String, Object> unsubscribeFromResource(String subscriptionId) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            ResourceSubscription subscription = resourceSubscriptions.get(subscriptionId);
+            if (subscription != null) {
+                // Remove from both tracking maps
+                resourceSubscriptions.remove(subscriptionId);
+                String uri = subscription.getUri();
+                Set<String> subscriptions = uriToSubscriptions.get(uri);
+                if (subscriptions != null) {
+                    subscriptions.remove(subscriptionId);
+                    if (subscriptions.isEmpty()) {
+                        uriToSubscriptions.remove(uri);
+                    }
+                }
+
+                result.put("subscriptionId", subscriptionId);
+                result.put("uri", uri);
+                result.put("status", "unsubscribed");
+                result.put("message", "🎸 Subscription ended - thanks for rocking with us!");
+
+                logger.info("🛑 Subscription ended: {} for URI: {}", subscriptionId, uri);
+            } else {
+                result.put("error", "Subscription not found");
+                result.put("subscriptionId", subscriptionId);
+                result.put("status", "not_found");
+            }
+        } catch (Exception e) {
+            logger.error("💥 Unsubscribe failed for ID: {}", subscriptionId, e);
+            result.put("error", "Unsubscribe failed: " + e.getMessage());
+            result.put("status", "failed");
+        }
+
+        return result;
+    }
+
+    /**
+     * 🎸 List all active subscriptions
+     */
+    public Map<String, Object> listSubscriptions() {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            List<Map<String, Object>> subscriptions = resourceSubscriptions.values().stream()
+                    .filter(ResourceSubscription::isActive)
+                    .map(sub -> {
+                        Map<String, Object> subInfo = new HashMap<>();
+                        subInfo.put("subscriptionId", sub.getSubscriptionId());
+                        subInfo.put("uri", sub.getUri());
+                        subInfo.put("clientId", sub.getClientId());
+                        subInfo.put("createdAt", sub.getCreatedAt());
+                        subInfo.put("active", sub.isActive());
+                        return subInfo;
+                    })
+                    .collect(Collectors.toList());
+
+            result.put("subscriptions", subscriptions);
+            result.put("totalCount", subscriptions.size());
+            result.put("message", "🎸 " + subscriptions.size() + " epic subscriptions rocking!");
+
+            logger.info("📋 Listed {} active subscriptions", subscriptions.size());
+
+        } catch (Exception e) {
+            logger.error("💥 Failed to list subscriptions", e);
+            result.put("error", "Failed to list subscriptions: " + e.getMessage());
+            result.put("subscriptions", List.of());
+            result.put("totalCount", 0);
+        }
+
+        return result;
+    }
+
+    /**
+     * 🎸 Notify all subscribers when a resource changes - Epic 2112 style!
+     */
+    public void notifyResourceUpdated(String uri) {
+        try {
+            Set<String> subscriptions = uriToSubscriptions.get(uri);
+            if (subscriptions != null && !subscriptions.isEmpty()) {
+                logger.info("🔥 Notifying {} subscribers about updates to: {}", subscriptions.size(), uri);
+
+                for (String subscriptionId : subscriptions) {
+                    ResourceSubscription subscription = resourceSubscriptions.get(subscriptionId);
+                    if (subscription != null && subscription.isActive()) {
+                        // Create notification
+                        ResourceNotification notification = new ResourceNotification(uri, subscriptionId);
+
+                        // In a real implementation, you'd send this to the client
+                        // For now, we'll log it as a demonstration
+                        logger.info("🚨 NOTIFICATION: Resource {} updated for subscription {}", uri, subscriptionId);
+                        logger.debug("📡 Notification payload: {}", notification);
+
+                        // TODO: In production, integrate with WebSocket or SSE to push to client
+                        // Example: webSocketService.sendToClient(subscription.getClientId(),
+                        // notification);
+                    }
+                }
+            } else {
+                logger.debug("🔇 No subscribers for resource: {}", uri);
+            }
+        } catch (Exception e) {
+            logger.error("💥 Failed to notify subscribers for URI: {}", uri, e);
+        }
+    }
+
+    /**
+     * 🎸 Get subscription details - Rock the information!
+     */
+    public Map<String, Object> getSubscriptionDetails(String subscriptionId) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            ResourceSubscription subscription = resourceSubscriptions.get(subscriptionId);
+            if (subscription != null) {
+                result.put("subscriptionId", subscription.getSubscriptionId());
+                result.put("uri", subscription.getUri());
+                result.put("clientId", subscription.getClientId());
+                result.put("active", subscription.isActive());
+                result.put("createdAt", subscription.getCreatedAt());
+                result.put("message", "🎸 Subscription info delivered - Rock on!");
+
+                logger.debug("📋 Retrieved subscription details for: {}", subscriptionId);
+            } else {
+                result.put("error", "Subscription not found");
+                result.put("subscriptionId", subscriptionId);
+                result.put("message", "🔍 No subscription found with that ID");
+            }
+        } catch (Exception e) {
+            logger.error("💥 Failed to get subscription details for: {}", subscriptionId, e);
+            result.put("error", "Failed to get subscription details: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    /**
+     * 🎸 Simulate a resource update - for testing our epic subscription system!
+     */
+    public Map<String, Object> simulateResourceUpdate(String uri) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            // Trigger the notification to all subscribers
+            notifyResourceUpdated(uri);
+
+            result.put("uri", uri);
+            result.put("status", "updated");
+            result.put("message", "🔥 Epic resource update simulated - subscribers notified!");
+            result.put("timestamp", System.currentTimeMillis());
+
+            logger.info("🎸 Simulated update for resource: {}", uri);
+
+        } catch (Exception e) {
+            logger.error("💥 Failed to simulate update for URI: {}", uri, e);
+            result.put("error", "Simulation failed: " + e.getMessage());
+            result.put("status", "failed");
         }
 
         return result;
