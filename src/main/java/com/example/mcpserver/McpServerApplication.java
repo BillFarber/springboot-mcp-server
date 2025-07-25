@@ -123,6 +123,10 @@ public class McpServerApplication {
                 System.err.println("Received initialized notification");
                 yield Map.of(); // Empty response for notification
             }
+            case "notifications/initialized" -> {
+                System.err.println("Received notifications/initialized notification - connection established");
+                yield Map.of(); // Empty response for notification
+            }
             case "tools/list" -> Map.of("tools", mcpService.listTools());
             case "resources/list" -> Map.of("resources", mcpService.listResources());
             case "tools/call" -> {
