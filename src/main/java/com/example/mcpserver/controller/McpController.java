@@ -56,6 +56,15 @@ public class McpController {
                 String name = (String) params.get("name");
                 yield mcpService.getPrompt(name);
             }
+            case "completion/complete" -> {
+                String text = (String) params.get("text");
+                Integer position = (Integer) params.get("position");
+                yield mcpService.getCompletions(text, position);
+            }
+            case "notifications/cancelled" -> {
+                Object progressToken = params.get("progressToken");
+                yield mcpService.cancelOperation(progressToken);
+            }
             case "ping" -> Map.of("result", "pong");
             case "tools/call" -> {
                 String toolName = (String) params.get("name");

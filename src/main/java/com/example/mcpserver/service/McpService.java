@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class McpService {
@@ -23,6 +24,9 @@ public class McpService {
 
     @Autowired
     private ApplicationContext applicationContext;
+
+    // Track running operations that can be cancelled
+    private final Map<Object, Boolean> runningOperations = new ConcurrentHashMap<>();
 
     public Map<String, Object> getServerInfo() {
         return getServerInfo("2024-11-05"); // Default protocol version
@@ -48,6 +52,7 @@ public class McpService {
         capabilities.put("resources", Map.of("subscribe", true, "listChanged", true));
         capabilities.put("resourceTemplates", Map.of("listChanged", true));
         capabilities.put("prompts", Map.of("listChanged", true));
+        capabilities.put("completion", Map.of("enabled", true));
         serverInfo.put("capabilities", capabilities);
 
         return serverInfo;
@@ -342,5 +347,108 @@ public class McpService {
                 }
                 ```
                 """;
+    }
+
+    public Map<String, Object> getCompletions(String text, Integer position) {
+        Map<String, Object> result = new HashMap<>();
+        List<Map<String, Object>> completions = new ArrayList<>();
+
+        // Handle null position
+        int pos = position != null ? position : text.length();
+
+        // Extract the text up to the cursor position
+        String textBeforeCursor = pos <= text.length() ? text.substring(0, pos) : text;
+        String textAfterCursor = pos < text.length() ? text.substring(pos) : "";
+
+        if (chatClient != null) {
+            try {
+                // Use AI to generate intelligent completions
+                String prompt = String.format(
+                        "Given this code/text context, suggest 3-5 likely completions for what comes next:\n\n" +
+                                "Text before cursor: '%s'\n" +
+                                "Text after cursor: '%s'\n\n" +
+                                "Provide completions as a JSON array of objects with 'text' and 'description' fields. "
+                                +
+                                "Focus on practical, contextually relevant suggestions.",
+                        textBeforeCursor, textAfterCursor);
+
+                ChatResponse response = chatClient.call(new org.springframework.ai.chat.prompt.Prompt(prompt));
+                String aiResponse = response.getResult().getOutput().getContent();
+
+                // Try to parse AI response as completion suggestions
+                // For now, create a simple completion based on AI response
+                Map<String, Object> aiCompletion = new HashMap<>();
+                aiCompletion.put("text", aiResponse.length() > 100 ? aiResponse.substring(0, 100) + "..." : aiResponse);
+                aiCompletion.put("description", "AI-generated completion");
+                completions.add(aiCompletion);
+
+            } catch (Exception e) {
+                logger.error("Error generating AI completions", e);
+                // Fall through to static completions
+            }
+        }
+
+        // Add some static intelligent completions based on context
+        addStaticCompletions(textBeforeCursor, completions);
+
+        result.put("completions", completions);
+        return result;
+    }
+
+    private void addStaticCompletions(String textBeforeCursor, List<Map<String, Object>> completions) {
+        String lowerText = textBeforeCursor.toLowerCase();
+
+        // Java/programming completions
+        if (lowerText.contains("public ") || lowerText.contains("private ") || lowerText.contains("class ")) {
+            addCompletion(completions, "static void main(String[] args) {", "Main method declaration");
+            addCompletion(completions, "toString() {", "Override toString method");
+            addCompletion(completions, "equals(Object obj) {", "Override equals method");
+        }
+
+        // SpringBoot completions
+        if (lowerText.contains("@") || lowerText.contains("spring")) {
+            addCompletion(completions, "@RestController", "REST controller annotation");
+            addCompletion(completions, "@Service", "Service component annotation");
+            addCompletion(completions, "@Autowired", "Dependency injection annotation");
+        }
+
+        // Documentation completions
+        if (lowerText.contains("/**") || lowerText.contains("* ")) {
+            addCompletion(completions, "@param name Description of the parameter", "Parameter documentation");
+            addCompletion(completions, "@return Description of return value", "Return value documentation");
+            addCompletion(completions, "@throws Exception Description of exception", "Exception documentation");
+        }
+
+        // General programming patterns
+        if (lowerText.contains("if ") || lowerText.contains("while ") || lowerText.contains("for ")) {
+            addCompletion(completions, "!= null", "Null check");
+            addCompletion(completions, ".isEmpty()", "Empty collection check");
+            addCompletion(completions, ".length() > 0", "String length check");
+        }
+    }
+
+    private void addCompletion(List<Map<String, Object>> completions, String text, String description) {
+        Map<String, Object> completion = new HashMap<>();
+        completion.put("text", text);
+        completion.put("description", description);
+        completions.add(completion);
+    }
+
+    public Map<String, Object> cancelOperation(Object progressToken) {
+        Map<String, Object> result = new HashMap<>();
+
+        if (progressToken != null) {
+            // Mark the operation as cancelled
+            runningOperations.put(progressToken, false);
+            result.put("cancelled", true);
+            result.put("progressToken", progressToken);
+            logger.info("Operation cancelled for token: {}", progressToken);
+        } else {
+            result.put("cancelled", false);
+            result.put("error", "No progress token provided");
+            logger.warn("Cancellation request without progress token");
+        }
+
+        return result;
     }
 }
