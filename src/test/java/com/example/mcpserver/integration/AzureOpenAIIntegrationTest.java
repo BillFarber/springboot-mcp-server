@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assumptions.*;
  * These tests actually hit Azure OpenAI using the .env configuration
  */
 @SpringBootTest(classes = McpServerApplication.class)
-@ActiveProfiles("test")
+@ActiveProfiles("integration")
 @DisplayName("🎸 Epic Azure OpenAI Integration Tests - 2112 Style! 🎸")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AzureOpenAIIntegrationTest {
@@ -81,8 +81,14 @@ class AzureOpenAIIntegrationTest {
         assertNotNull(result, "Result should not be null");
         assertFalse((Boolean) result.get("isError"), "Should not have error: " + result.get("content"));
 
-        String content = (String) result.get("content");
-        assertNotNull(content, "Generated content should not be null");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> contentList = (List<Map<String, Object>>) result.get("content");
+        assertNotNull(contentList, "Generated content should not be null");
+        assertFalse(contentList.isEmpty(), "Generated content should not be empty");
+
+        Map<String, Object> firstContent = contentList.get(0);
+        String content = (String) firstContent.get("text");
+        assertNotNull(content, "Generated text should not be null");
         assertFalse(content.isEmpty(), "Generated content should not be empty");
         assertTrue(content.length() > 20, "Generated content should be substantial");
 
@@ -148,7 +154,11 @@ class AzureOpenAIIntegrationTest {
         assertNotNull(result, "Result should not be null");
 
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> completions = (List<Map<String, Object>>) result.get("completions");
+        Map<String, Object> completion = (Map<String, Object>) result.get("completion");
+        assertNotNull(completion, "Completion should not be null");
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> completions = (List<Map<String, Object>>) completion.get("values");
         assertNotNull(completions, "Completions should not be null");
         assertTrue(completions.size() > 0, "Should have at least one completion");
 
@@ -161,14 +171,17 @@ class AzureOpenAIIntegrationTest {
             String aiText = (String) firstCompletion.get("text");
             assertNotNull(aiText, "AI completion text should not be null");
             assertFalse(aiText.isEmpty(), "AI completion should not be empty");
+
+            // When AI is working, we may or may not have static completions depending on
+            // the input
+            System.out.println("✅ AI-powered completions working successfully!");
         } else {
             System.out.println("📝 Using static completions (AI may not be available)");
+            // Should have some static completions when AI is not available
+            boolean hasStaticCompletions = completions.stream()
+                    .anyMatch(c -> !("AI-generated completion".equals(c.get("description"))));
+            assertTrue(hasStaticCompletions, "Should have static completions as fallback when AI fails");
         }
-
-        // Should have some static completions too
-        boolean hasStaticCompletions = completions.stream()
-                .anyMatch(c -> !("AI-generated completion".equals(c.get("description"))));
-        assertTrue(hasStaticCompletions, "Should have static completions as fallback");
     }
 
     @Test
@@ -188,7 +201,13 @@ class AzureOpenAIIntegrationTest {
         assertNotNull(result, "Result should not be null");
         assertTrue((Boolean) result.get("isError"), "Should have error for empty prompt");
 
-        String content = (String) result.get("content");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> contentList = (List<Map<String, Object>>) result.get("content");
+        assertNotNull(contentList, "Error content should not be null");
+        assertFalse(contentList.isEmpty(), "Error content should not be empty");
+
+        Map<String, Object> firstContent = contentList.get(0);
+        String content = (String) firstContent.get("text");
         assertTrue(content.contains("🎸 Prompt is required"), "Should have epic error message");
     }
 

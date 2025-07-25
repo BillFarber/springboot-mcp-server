@@ -4,7 +4,7 @@ import com.example.mcpserver.McpServerApplication;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureWebMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Tests the REST API endpoints including subscription management
  */
 @SpringBootTest(classes = McpServerApplication.class)
-@AutoConfigureWebMvc
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @DisplayName("🎸 Epic HTTP Controller Integration Tests! 🎸")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -145,7 +145,7 @@ class McpControllerIntegrationTest {
                 .andExpect(jsonPath("$.jsonrpc").value("2.0"))
                 .andExpect(jsonPath("$.id").value(4))
                 .andExpect(jsonPath("$.result.isError").value(true))
-                .andExpect(jsonPath("$.result.content").value("🎸 Unknown tool: unknown_epic_tool"));
+                .andExpect(jsonPath("$.result.content[0].text").value("🎸 Epic tool not found!"));
     }
 
     @Test

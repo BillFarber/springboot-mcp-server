@@ -57,8 +57,10 @@ public class McpController {
                 yield mcpService.getPrompt(name);
             }
             case "completion/complete" -> {
-                String text = (String) params.get("text");
-                Integer position = (Integer) params.get("position");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> argument = (Map<String, Object>) params.get("argument");
+                String text = argument != null ? (String) argument.get("value") : null;
+                Integer position = text != null ? text.length() : 0;
                 yield mcpService.getCompletions(text, position);
             }
             case "notifications/cancelled" -> {

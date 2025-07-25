@@ -222,7 +222,8 @@ public class McpService {
                     // 🎸 Epic 2112-style error handling instead of throwing! 🎸
                     logger.warn("🔥 Unknown tool requested: {}", toolName);
                     result.put("isError", true);
-                    result.put("content", "🎸 Epic tool not found! Available tools: generate_text, analyze_data");
+                    result.put("content",
+                            List.of(Map.of("type", "text", "text", "🎸 Epic tool not found!")));
                     result.put("mimeType", "text/plain");
                     result.put("error", "Unknown tool: " + toolName);
                     result.put("availableTools", List.of("generate_text", "analyze_data"));
@@ -232,7 +233,8 @@ public class McpService {
             // 🎸 Epic error handling for any other issues! 🎸
             logger.error("💥 Tool execution failed for {}: {}", toolName, e.getMessage(), e);
             result.put("isError", true);
-            result.put("content", "🔥 Tool execution failed: " + e.getMessage());
+            result.put("content",
+                    List.of(Map.of("type", "text", "text", "🔥 Tool execution failed: " + e.getMessage())));
             result.put("mimeType", "text/plain");
             result.put("error", e.getMessage());
             result.put("toolName", toolName);
@@ -247,7 +249,8 @@ public class McpService {
         try {
             // 🎸 Epic defensive coding! 🎸
             if (arguments == null) {
-                result.put("content", "🔥 No arguments provided for text generation!");
+                result.put("content",
+                        List.of(Map.of("type", "text", "text", "🔥 No arguments provided for text generation!")));
                 result.put("isError", true);
                 result.put("mimeType", "text/plain");
                 return result;
@@ -255,7 +258,8 @@ public class McpService {
 
             String prompt = (String) arguments.get("prompt");
             if (prompt == null || prompt.trim().isEmpty()) {
-                result.put("content", "🎸 Prompt is required for epic text generation!");
+                result.put("content",
+                        List.of(Map.of("type", "text", "text", "🎸 Prompt is required for epic text generation!")));
                 result.put("isError", true);
                 result.put("mimeType", "text/plain");
                 return result;
@@ -275,25 +279,34 @@ public class McpService {
                 try {
                     logger.debug("Calling Azure OpenAI with prompt: {}", prompt);
                     ChatResponse response = chatClient.call(new org.springframework.ai.chat.prompt.Prompt(prompt));
-                    result.put("content", response.getResult().getOutput().getContent());
-                    result.put("isError", false);
-                    logger.debug("Successfully generated text");
+                    if (response == null || response.getResult() == null) {
+                        result.put("content",
+                                List.of(Map.of("type", "text", "text", "🔥 AI response was incomplete")));
+                        result.put("isError", true);
+                    } else {
+                        String content = response.getResult().getOutput().getContent();
+                        result.put("content", List.of(Map.of("type", "text", "text", content)));
+                        result.put("isError", false);
+                        logger.debug("Successfully generated text");
+                    }
                 } catch (Exception e) {
                     logger.error("Error generating text", e);
-                    result.put("content", "🔥 Epic AI generation failed: " + e.getMessage());
+                    result.put("content",
+                            List.of(Map.of("type", "text", "text", "🔥 Epic AI generation failed: " + e.getMessage())));
                     result.put("isError", true);
                 }
             } else {
                 // Fallback when AI client is not configured
                 logger.warn("ChatClient is null - using mock response");
-                result.put("content", "🎸 AI client not configured. Epic mock response for prompt: " + prompt);
+                result.put("content", List.of(Map.of("type", "text", "text",
+                        "🎸 AI client not configured. Epic mock response for prompt: " + prompt)));
                 result.put("isError", false);
             }
 
             result.put("mimeType", "text/plain");
         } catch (Exception e) {
             logger.error("💥 Unexpected error in generateText", e);
-            result.put("content", "🔥 Unexpected error: " + e.getMessage());
+            result.put("content", List.of(Map.of("type", "text", "text", "🔥 Unexpected error: " + e.getMessage())));
             result.put("isError", true);
             result.put("mimeType", "text/plain");
         }
@@ -340,7 +353,8 @@ public class McpService {
                     result.put("isError", false);
                 } catch (Exception e) {
                     logger.error("💥 AI analysis failed", e);
-                    result.put("content", "🔥 Epic AI analysis failed: " + e.getMessage());
+                    result.put("content",
+                            List.of(Map.of("type", "text", "text", "🔥 Epic AI analysis failed: " + e.getMessage())));
                     result.put("isError", true);
                 }
             } else {
@@ -354,7 +368,8 @@ public class McpService {
             result.put("mimeType", "text/markdown");
         } catch (Exception e) {
             logger.error("💥 Unexpected error in analyzeData", e);
-            result.put("content", "🔥 Unexpected analysis error: " + e.getMessage());
+            result.put("content",
+                    List.of(Map.of("type", "text", "text", "🔥 Unexpected analysis error: " + e.getMessage())));
             result.put("isError", true);
             result.put("mimeType", "text/markdown");
         }
@@ -468,7 +483,10 @@ public class McpService {
         // Add some static intelligent completions based on context
         addStaticCompletions(textBeforeCursor, completions);
 
-        result.put("completions", completions);
+        // Format according to MCP completion specification
+        Map<String, Object> completion = new HashMap<>();
+        completion.put("values", completions);
+        result.put("completion", completion);
         return result;
     }
 
