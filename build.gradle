@@ -36,6 +36,11 @@ dependencyManagement {
     }
 }
 
+// Specify main class for regular HTTP server
+springBoot {
+    mainClass = 'com.example.mcpserver.McpServerApplication'
+}
+
 tasks.named('test') {
     useJUnitPlatform()
 }

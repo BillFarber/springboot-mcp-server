@@ -25,10 +25,24 @@ public class McpService {
     private ApplicationContext applicationContext;
 
     public Map<String, Object> getServerInfo() {
-        Map<String, Object> serverInfo = new HashMap<>();
-        serverInfo.put("name", "SpringBoot MCP Server");
-        serverInfo.put("version", "1.0.0");
+        return getServerInfo("2024-11-05"); // Default protocol version
+    }
 
+    public Map<String, Object> getServerInfo(String clientProtocolVersion) {
+        Map<String, Object> serverInfo = new HashMap<>();
+
+        // Use the client's protocol version if provided, otherwise use a compatible
+        // version
+        String protocolVersion = clientProtocolVersion != null ? clientProtocolVersion : "2024-11-05";
+        serverInfo.put("protocolVersion", protocolVersion);
+
+        // Server information
+        Map<String, Object> server = new HashMap<>();
+        server.put("name", "SpringBoot MCP Server");
+        server.put("version", "1.0.0");
+        serverInfo.put("serverInfo", server);
+
+        // Server capabilities
         Map<String, Object> capabilities = new HashMap<>();
         capabilities.put("tools", Map.of("listChanged", true));
         capabilities.put("resources", Map.of("subscribe", true, "listChanged", true));

@@ -6,19 +6,19 @@ public class McpResponse {
     @JsonProperty("jsonrpc")
     private String jsonrpc = "2.0";
 
-    private String id;
+    private Object id; // Changed from String to Object to handle both strings and integers
     private Object result;
     private McpError error;
 
     public McpResponse() {
     }
 
-    public McpResponse(String id, Object result) {
+    public McpResponse(Object id, Object result) { // Changed parameter type
         this.id = id;
         this.result = result;
     }
 
-    public McpResponse(String id, McpError error) {
+    public McpResponse(Object id, McpError error) { // Changed parameter type
         this.id = id;
         this.error = error;
     }
@@ -32,11 +32,11 @@ public class McpResponse {
         this.jsonrpc = jsonrpc;
     }
 
-    public String getId() {
+    public Object getId() { // Changed return type
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Object id) { // Changed parameter type
         this.id = id;
     }
 

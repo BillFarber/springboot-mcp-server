@@ -46,19 +46,38 @@ Analyze data and provide insights using AI.
 
 ### 2. Configure AI (Optional)
 
-To enable AI features, set your Azure OpenAI credentials in `src/main/resources/application.properties`:
+To enable AI features, you have several options for configuring your Azure OpenAI credentials:
+
+#### Option A: Using .env file (Recommended for development)
+
+Create a `.env` file in the project root directory:
+
+```env
+# Azure OpenAI Configuration - Keep this file secret!
+AZURE_OPENAI_API_KEY=your-azure-openai-api-key
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-35-turbo
+```
+
+**Important:** The `.env` file is automatically ignored by git and won't be committed to version control.
+
+#### Option B: Using environment variables
+
+```bash
+export AZURE_OPENAI_API_KEY=your-azure-openai-api-key
+export AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
+export AZURE_OPENAI_DEPLOYMENT_NAME=gpt-35-turbo
+```
+
+#### Option C: Direct configuration (Not recommended for production)
+
+Set your credentials directly in `src/main/resources/application.properties`:
 
 ```properties
 spring.ai.azure.openai.api-key=your-azure-openai-api-key
 spring.ai.azure.openai.endpoint=https://your-resource-name.openai.azure.com/
 spring.ai.azure.openai.chat.options.deployment-name=gpt-35-turbo
 spring.ai.azure.openai.chat.options.model=gpt-3.5-turbo
-```
-
-Or set them as environment variables:
-```bash
-export AZURE_OPENAI_API_KEY=your-azure-openai-api-key
-export AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
 ```
 
 ### 3. Run the Server

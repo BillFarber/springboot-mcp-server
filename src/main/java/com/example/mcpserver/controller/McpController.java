@@ -3,6 +3,9 @@ package com.example.mcpserver.controller;
 import com.example.mcpserver.model.McpRequest;
 import com.example.mcpserver.model.McpResponse;
 import com.example.mcpserver.service.McpService;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,11 +17,14 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class McpController {
 
+    private static final Logger logger = LoggerFactory.getLogger(McpController.class);
+
     @Autowired
     private McpService mcpService;
 
     @PostMapping
     public ResponseEntity<McpResponse> handleMcpRequest(@RequestBody McpRequest request) {
+        logger.debug("handleMcpRequest");
         try {
             Object result = processRequest(request);
             return ResponseEntity.ok(new McpResponse(request.getId(), result));
@@ -34,7 +40,14 @@ public class McpController {
         Map<String, Object> params = (Map<String, Object>) request.getParams();
 
         return switch (method) {
-            case "initialize" -> mcpService.getServerInfo();
+            case "initialize" -> {
+                // Extract client protocol version if provided
+                String clientProtocolVersion = null;
+                if (params != null && params.containsKey("protocolVersion")) {
+                    clientProtocolVersion = (String) params.get("protocolVersion");
+                }
+                yield mcpService.getServerInfo(clientProtocolVersion);
+            }
             case "tools/list" -> Map.of("tools", mcpService.listTools());
             case "resources/list" -> Map.of("resources", mcpService.listResources());
             case "tools/call" -> {

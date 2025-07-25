@@ -6,14 +6,14 @@ public class McpRequest {
     @JsonProperty("jsonrpc")
     private String jsonrpc = "2.0";
 
-    private String id;
+    private Object id; // Changed from String to Object
     private String method;
     private Object params;
 
     public McpRequest() {
     }
 
-    public McpRequest(String id, String method, Object params) {
+    public McpRequest(Object id, String method, Object params) { // Changed parameter type
         this.id = id;
         this.method = method;
         this.params = params;
@@ -28,11 +28,11 @@ public class McpRequest {
         this.jsonrpc = jsonrpc;
     }
 
-    public String getId() {
+    public Object getId() { // Changed return type
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(Object id) { // Changed parameter type
         this.id = id;
     }
 
