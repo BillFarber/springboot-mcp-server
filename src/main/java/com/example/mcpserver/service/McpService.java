@@ -5,7 +5,6 @@ import com.example.mcpserver.model.Resource;
 import com.example.mcpserver.model.ResourceTemplate;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
@@ -48,6 +47,7 @@ public class McpService {
         capabilities.put("tools", Map.of("listChanged", true));
         capabilities.put("resources", Map.of("subscribe", true, "listChanged", true));
         capabilities.put("resourceTemplates", Map.of("listChanged", true));
+        capabilities.put("prompts", Map.of("listChanged", true));
         serverInfo.put("capabilities", capabilities);
 
         return serverInfo;
@@ -133,6 +133,68 @@ public class McpService {
         return templates;
     }
 
+    public List<com.example.mcpserver.model.Prompt> listPrompts() {
+        List<com.example.mcpserver.model.Prompt> prompts = new ArrayList<>();
+
+        // Example prompt for code review
+        List<com.example.mcpserver.model.Prompt.PromptArgument> codeReviewArgs = List.of(
+                new com.example.mcpserver.model.Prompt.PromptArgument("code", "The code to review", true),
+                new com.example.mcpserver.model.Prompt.PromptArgument("language", "Programming language", false));
+
+        prompts.add(new com.example.mcpserver.model.Prompt(
+                "code_review",
+                "Review code for best practices, security, and performance",
+                codeReviewArgs));
+
+        // Example prompt for documentation generation
+        List<com.example.mcpserver.model.Prompt.PromptArgument> docArgs = List.of(
+                new com.example.mcpserver.model.Prompt.PromptArgument("function", "Function or API to document", true),
+                new com.example.mcpserver.model.Prompt.PromptArgument("style",
+                        "Documentation style (JSDoc, Javadoc, etc.)", false));
+
+        prompts.add(new com.example.mcpserver.model.Prompt(
+                "generate_docs",
+                "Generate comprehensive documentation for code",
+                docArgs));
+
+        return prompts;
+    }
+
+    public Map<String, Object> getPrompt(String name) {
+        Map<String, Object> result = new HashMap<>();
+
+        switch (name) {
+            case "code_review":
+                result.put("name", name);
+                result.put("description", "Review code for best practices, security, and performance");
+                result.put("prompt", "Please review the following {{language}} code for:\n" +
+                        "1. Best practices and coding standards\n" +
+                        "2. Security vulnerabilities\n" +
+                        "3. Performance optimizations\n" +
+                        "4. Maintainability improvements\n\n" +
+                        "Code to review:\n{{code}}\n\n" +
+                        "Provide specific, actionable feedback with examples.");
+                break;
+            case "generate_docs":
+                result.put("name", name);
+                result.put("description", "Generate comprehensive documentation for code");
+                result.put("prompt",
+                        "Generate comprehensive {{style}} documentation for the following function/API:\n\n" +
+                                "{{function}}\n\n" +
+                                "Include:\n" +
+                                "- Purpose and description\n" +
+                                "- Parameters with types and descriptions\n" +
+                                "- Return values\n" +
+                                "- Usage examples\n" +
+                                "- Error conditions");
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown prompt: " + name);
+        }
+
+        return result;
+    }
+
     public Map<String, Object> callTool(String toolName, Map<String, Object> arguments) {
         Map<String, Object> result = new HashMap<>();
 
@@ -168,7 +230,7 @@ public class McpService {
         if (chatClient != null) {
             try {
                 logger.debug("Calling Azure OpenAI with prompt: {}", prompt);
-                ChatResponse response = chatClient.call(new Prompt(prompt));
+                ChatResponse response = chatClient.call(new org.springframework.ai.chat.prompt.Prompt(prompt));
                 result.put("content", response.getResult().getOutput().getContent());
                 result.put("isError", false);
                 logger.debug("Successfully generated text");
@@ -199,7 +261,7 @@ public class McpService {
                 String prompt = String.format(
                         "Perform a %s analysis on the following data:\n\n%s\n\nProvide insights and key findings.",
                         analysisType, data);
-                ChatResponse response = chatClient.call(new Prompt(prompt));
+                ChatResponse response = chatClient.call(new org.springframework.ai.chat.prompt.Prompt(prompt));
                 result.put("content", response.getResult().getOutput().getContent());
                 result.put("isError", false);
             } catch (Exception e) {

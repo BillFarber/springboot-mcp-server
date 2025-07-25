@@ -51,6 +51,12 @@ public class McpController {
             case "tools/list" -> Map.of("tools", mcpService.listTools());
             case "resources/list" -> Map.of("resources", mcpService.listResources());
             case "resources/templates/list" -> Map.of("resourceTemplates", mcpService.listResourceTemplates());
+            case "prompts/list" -> Map.of("prompts", mcpService.listPrompts());
+            case "prompts/get" -> {
+                String name = (String) params.get("name");
+                yield mcpService.getPrompt(name);
+            }
+            case "ping" -> Map.of("result", "pong");
             case "tools/call" -> {
                 String toolName = (String) params.get("name");
                 @SuppressWarnings("unchecked")
