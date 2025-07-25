@@ -2,6 +2,7 @@ package com.example.mcpserver.service;
 
 import com.example.mcpserver.model.Tool;
 import com.example.mcpserver.model.Resource;
+import com.example.mcpserver.model.ResourceTemplate;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -46,6 +47,7 @@ public class McpService {
         Map<String, Object> capabilities = new HashMap<>();
         capabilities.put("tools", Map.of("listChanged", true));
         capabilities.put("resources", Map.of("subscribe", true, "listChanged", true));
+        capabilities.put("resourceTemplates", Map.of("listChanged", true));
         serverInfo.put("capabilities", capabilities);
 
         return serverInfo;
@@ -109,6 +111,26 @@ public class McpService {
                 "text/markdown"));
 
         return resources;
+    }
+
+    public List<ResourceTemplate> listResourceTemplates() {
+        List<ResourceTemplate> templates = new ArrayList<>();
+
+        // Example template for dynamic log files
+        templates.add(new ResourceTemplate(
+                "mcp://logs/{level}",
+                "Log Files by Level",
+                "Server log files filtered by log level (debug, info, warn, error)",
+                "text/plain"));
+
+        // Example template for dynamic tool documentation
+        templates.add(new ResourceTemplate(
+                "mcp://tools/{toolName}/docs",
+                "Tool Documentation",
+                "Detailed documentation for a specific tool",
+                "text/markdown"));
+
+        return templates;
     }
 
     public Map<String, Object> callTool(String toolName, Map<String, Object> arguments) {
