@@ -1,0 +1,496 @@
+package com.example.mcpserver.service;
+
+import com.example.mcpserver.model.Tool;
+import com.example.mcpserver.model.Resource;
+import com.example.mcpserver.model.ResourceTemplate;
+import com.example.mcpserver.model.Prompt;
+import com.example.mcpserver.model.ResourceSubscription;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.ai.chat.ChatClient;
+import org.springframework.ai.chat.ChatResponse;
+import org.springframework.ai.chat.Generation;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.context.ApplicationContext;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+/**
+ * 🎸 Epic 2112-Style Unit Tests for McpService! 🎸
+ */
+@DisplayName("🎸 Epic McpService Tests - 2112 Style! 🎸")
+class McpServiceTest {
+
+    @Mock
+    private ChatClient chatClient;
+
+    @Mock
+    private ApplicationContext applicationContext;
+
+    @InjectMocks
+    private McpService mcpService;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+
+        // Reset the subscription maps for each test
+        Map<String, ResourceSubscription> resourceSubscriptions = new ConcurrentHashMap<>();
+        Map<String, Set<String>> uriToSubscriptions = new ConcurrentHashMap<>();
+        ReflectionTestUtils.setField(mcpService, "resourceSubscriptions", resourceSubscriptions);
+        ReflectionTestUtils.setField(mcpService, "uriToSubscriptions", uriToSubscriptions);
+    }
+
+    @Nested
+    @DisplayName("🚀 Server Info Tests")
+    class ServerInfoTests {
+
+        @Test
+        @DisplayName("Should return epic server info with default protocol version")
+        void shouldReturnServerInfoWithDefaultProtocol() {
+            // When
+            Map<String, Object> serverInfo = mcpService.getServerInfo();
+
+            // Then
+            assertNotNull(serverInfo);
+            assertEquals("2024-11-05", serverInfo.get("protocolVersion"));
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> server = (Map<String, Object>) serverInfo.get("serverInfo");
+            assertEquals("SpringBoot MCP Server", server.get("name"));
+            assertEquals("1.0.0", server.get("version"));
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> capabilities = (Map<String, Object>) serverInfo.get("capabilities");
+            assertNotNull(capabilities.get("tools"));
+            assertNotNull(capabilities.get("resources"));
+            assertNotNull(capabilities.get("completion"));
+        }
+
+        @Test
+        @DisplayName("Should use client protocol version when provided")
+        void shouldUseClientProtocolVersion() {
+            // Given
+            String clientVersion = "2024-12-01";
+
+            // When
+            Map<String, Object> serverInfo = mcpService.getServerInfo(clientVersion);
+
+            // Then
+            assertEquals(clientVersion, serverInfo.get("protocolVersion"));
+        }
+    }
+
+    @Nested
+    @DisplayName("🎸 Tools Tests")
+    class ToolsTests {
+
+        @Test
+        @DisplayName("Should list all epic tools")
+        void shouldListAllTools() {
+            // When
+            List<Tool> tools = mcpService.listTools();
+
+            // Then
+            assertNotNull(tools);
+            assertEquals(2, tools.size());
+
+            Tool generateTextTool = tools.stream()
+                    .filter(t -> "generate_text".equals(t.getName()))
+                    .findFirst()
+                    .orElse(null);
+            assertNotNull(generateTextTool);
+            assertEquals("Generate text using AI based on a prompt", generateTextTool.getDescription());
+
+            Tool analyzeDataTool = tools.stream()
+                    .filter(t -> "analyze_data".equals(t.getName()))
+                    .findFirst()
+                    .orElse(null);
+            assertNotNull(analyzeDataTool);
+            assertEquals("Analyze data and provide insights using AI", analyzeDataTool.getDescription());
+        }
+    }
+
+    @Nested
+    @DisplayName("🔥 Epic Tool Execution Tests")
+    class ToolExecutionTests {
+
+        @Test
+        @DisplayName("Should handle unknown tool with epic error message")
+        void shouldHandleUnknownToolWithEpicError() {
+            // Given
+            String unknownTool = "nonexistent_tool";
+            Map<String, Object> arguments = Map.of("test", "value");
+
+            // When
+            Map<String, Object> result = mcpService.callTool(unknownTool, arguments);
+
+            // Then
+            assertNotNull(result);
+            assertTrue((Boolean) result.get("isError"));
+            assertTrue(((String) result.get("content")).contains("🎸 Epic tool not found!"));
+            assertEquals("Unknown tool: " + unknownTool, result.get("error"));
+
+            @SuppressWarnings("unchecked")
+            List<String> availableTools = (List<String>) result.get("availableTools");
+            assertTrue(availableTools.contains("generate_text"));
+            assertTrue(availableTools.contains("analyze_data"));
+        }
+
+        @Test
+        @DisplayName("Should handle null arguments for generate_text")
+        void shouldHandleNullArgumentsForGenerateText() {
+            // When
+            Map<String, Object> result = mcpService.callTool("generate_text", null);
+
+            // Then
+            assertNotNull(result);
+            assertTrue((Boolean) result.get("isError"));
+            assertTrue(((String) result.get("content")).contains("🔥 No arguments provided"));
+        }
+
+        @Test
+        @DisplayName("Should handle empty prompt for generate_text")
+        void shouldHandleEmptyPromptForGenerateText() {
+            // Given
+            Map<String, Object> arguments = Map.of("prompt", "");
+
+            // When
+            Map<String, Object> result = mcpService.callTool("generate_text", arguments);
+
+            // Then
+            assertNotNull(result);
+            assertTrue((Boolean) result.get("isError"));
+            assertTrue(((String) result.get("content")).contains("🎸 Prompt is required"));
+        }
+
+        @Test
+        @DisplayName("Should generate text with AI client")
+        void shouldGenerateTextWithAI() throws Exception {
+            // Given
+            String prompt = "Write an epic song about code!";
+            Map<String, Object> arguments = Map.of("prompt", prompt);
+
+            ChatResponse mockResponse = mock(ChatResponse.class);
+            Generation mockGeneration = mock(Generation.class);
+            AssistantMessage mockMessage = mock(AssistantMessage.class);
+
+            when(chatClient.call(any(org.springframework.ai.chat.prompt.Prompt.class))).thenReturn(mockResponse);
+            when(mockResponse.getResult()).thenReturn(mockGeneration);
+            when(mockGeneration.getOutput()).thenReturn(mockMessage);
+            when(mockMessage.getContent()).thenReturn("Epic AI-generated song about code!");
+
+            // When
+            Map<String, Object> result = mcpService.callTool("generate_text", arguments);
+
+            // Then
+            assertNotNull(result);
+            assertFalse((Boolean) result.get("isError"));
+            assertEquals("Epic AI-generated song about code!", result.get("content"));
+            assertEquals("text/plain", result.get("mimeType"));
+            verify(chatClient).call(any(org.springframework.ai.chat.prompt.Prompt.class));
+        }
+
+        @Test
+        @DisplayName("Should use mock response when AI client is null")
+        void shouldUseMockResponseWhenAIClientIsNull() {
+            // Given
+            String prompt = "Test prompt";
+            Map<String, Object> arguments = Map.of("prompt", prompt);
+            ReflectionTestUtils.setField(mcpService, "chatClient", null);
+
+            // When
+            Map<String, Object> result = mcpService.callTool("generate_text", arguments);
+
+            // Then
+            assertNotNull(result);
+            assertFalse((Boolean) result.get("isError"));
+            assertTrue(((String) result.get("content")).contains("🎸 AI client not configured"));
+            assertTrue(((String) result.get("content")).contains(prompt));
+        }
+    }
+
+    @Nested
+    @DisplayName("🎸 Epic Subscription Tests")
+    class SubscriptionTests {
+
+        @Test
+        @DisplayName("Should create epic subscription")
+        void shouldCreateEpicSubscription() {
+            // Given
+            String uri = "file://epic-code.java";
+            String clientId = "vscode-2112";
+
+            // When
+            Map<String, Object> result = mcpService.subscribeToResource(uri, clientId);
+
+            // Then
+            assertNotNull(result);
+            assertEquals("subscribed", result.get("status"));
+            assertEquals(uri, result.get("uri"));
+            assertTrue(((String) result.get("message")).contains("🎸 Rocking real-time updates"));
+            assertNotNull(result.get("subscriptionId"));
+            assertTrue(((String) result.get("subscriptionId")).startsWith("sub_"));
+        }
+
+        @Test
+        @DisplayName("Should list epic subscriptions")
+        void shouldListEpicSubscriptions() {
+            // Given - Create a subscription first
+            String uri = "file://temples-of-syrinx.java";
+            String clientId = "vscode-prophet";
+            Map<String, Object> subscribeResult = mcpService.subscribeToResource(uri, clientId);
+            String subscriptionId = (String) subscribeResult.get("subscriptionId");
+
+            // When
+            Map<String, Object> result = mcpService.listSubscriptions();
+
+            // Then
+            assertNotNull(result);
+            assertEquals(1, result.get("totalCount"));
+            assertTrue(((String) result.get("message")).contains("🎸 1 epic subscriptions rocking!"));
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> subscriptions = (List<Map<String, Object>>) result.get("subscriptions");
+            assertEquals(1, subscriptions.size());
+
+            Map<String, Object> subscription = subscriptions.get(0);
+            assertEquals(subscriptionId, subscription.get("subscriptionId"));
+            assertEquals(uri, subscription.get("uri"));
+            assertEquals(clientId, subscription.get("clientId"));
+            assertTrue((Boolean) subscription.get("active"));
+        }
+
+        @Test
+        @DisplayName("Should unsubscribe from epic subscription")
+        void shouldUnsubscribeFromEpicSubscription() {
+            // Given - Create a subscription first
+            String uri = "file://freewill.ts";
+            String clientId = "vscode-neil";
+            Map<String, Object> subscribeResult = mcpService.subscribeToResource(uri, clientId);
+            String subscriptionId = (String) subscribeResult.get("subscriptionId");
+
+            // When
+            Map<String, Object> result = mcpService.unsubscribeFromResource(subscriptionId);
+
+            // Then
+            assertNotNull(result);
+            assertEquals("unsubscribed", result.get("status"));
+            assertEquals(subscriptionId, result.get("subscriptionId"));
+            assertEquals(uri, result.get("uri"));
+            assertTrue(((String) result.get("message")).contains("🎸 Subscription ended"));
+        }
+
+        @Test
+        @DisplayName("Should handle unsubscribe from nonexistent subscription")
+        void shouldHandleUnsubscribeFromNonexistentSubscription() {
+            // Given
+            String nonexistentId = "sub_nonexistent_123";
+
+            // When
+            Map<String, Object> result = mcpService.unsubscribeFromResource(nonexistentId);
+
+            // Then
+            assertNotNull(result);
+            assertEquals("not_found", result.get("status"));
+            assertEquals("Subscription not found", result.get("error"));
+            assertEquals(nonexistentId, result.get("subscriptionId"));
+        }
+
+        @Test
+        @DisplayName("Should get subscription details")
+        void shouldGetSubscriptionDetails() {
+            // Given - Create a subscription first
+            String uri = "file://xanadu.js";
+            String clientId = "vscode-geddy";
+            Map<String, Object> subscribeResult = mcpService.subscribeToResource(uri, clientId);
+            String subscriptionId = (String) subscribeResult.get("subscriptionId");
+
+            // When
+            Map<String, Object> result = mcpService.getSubscriptionDetails(subscriptionId);
+
+            // Then
+            assertNotNull(result);
+            assertEquals(subscriptionId, result.get("subscriptionId"));
+            assertEquals(uri, result.get("uri"));
+            assertEquals(clientId, result.get("clientId"));
+            assertTrue((Boolean) result.get("active"));
+            assertNotNull(result.get("createdAt"));
+            assertTrue(((String) result.get("message")).contains("🎸 Subscription info delivered"));
+        }
+
+        @Test
+        @DisplayName("Should simulate resource update")
+        void shouldSimulateResourceUpdate() {
+            // Given
+            String uri = "file://limelight.py";
+
+            // When
+            Map<String, Object> result = mcpService.simulateResourceUpdate(uri);
+
+            // Then
+            assertNotNull(result);
+            assertEquals("updated", result.get("status"));
+            assertEquals(uri, result.get("uri"));
+            assertTrue(((String) result.get("message")).contains("🔥 Epic resource update simulated"));
+            assertNotNull(result.get("timestamp"));
+        }
+    }
+
+    @Nested
+    @DisplayName("🚀 Resources Tests")
+    class ResourcesTests {
+
+        @Test
+        @DisplayName("Should list all epic resources")
+        void shouldListAllResources() {
+            // When
+            List<Resource> resources = mcpService.listResources();
+
+            // Then
+            assertNotNull(resources);
+            assertEquals(2, resources.size());
+
+            Resource serverInfo = resources.stream()
+                    .filter(r -> "mcp://server/info".equals(r.getUri()))
+                    .findFirst()
+                    .orElse(null);
+            assertNotNull(serverInfo);
+            assertEquals("Server Information", serverInfo.getName());
+
+            Resource toolExamples = resources.stream()
+                    .filter(r -> "mcp://tools/examples".equals(r.getUri()))
+                    .findFirst()
+                    .orElse(null);
+            assertNotNull(toolExamples);
+            assertEquals("Tool Examples", toolExamples.getName());
+        }
+
+        @Test
+        @DisplayName("Should list epic resource templates")
+        void shouldListResourceTemplates() {
+            // When
+            List<ResourceTemplate> templates = mcpService.listResourceTemplates();
+
+            // Then
+            assertNotNull(templates);
+            assertEquals(2, templates.size());
+
+            ResourceTemplate logTemplate = templates.stream()
+                    .filter(t -> "mcp://logs/{level}".equals(t.getUriTemplate()))
+                    .findFirst()
+                    .orElse(null);
+            assertNotNull(logTemplate);
+            assertEquals("Log Files by Level", logTemplate.getName());
+        }
+
+        @Test
+        @DisplayName("Should read server info resource")
+        void shouldReadServerInfoResource() {
+            // When
+            Map<String, Object> result = mcpService.readResource("mcp://server/info");
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contents = (List<Map<String, Object>>) result.get("contents");
+            assertEquals(1, contents.size());
+
+            Map<String, Object> content = contents.get(0);
+            assertEquals("mcp://server/info", content.get("uri"));
+            assertEquals("application/json", content.get("mimeType"));
+            assertNotNull(content.get("text"));
+        }
+    }
+
+    @Nested
+    @DisplayName("🎸 Completions Tests")
+    class CompletionsTests {
+
+        @Test
+        @DisplayName("Should provide epic completions for Java code")
+        void shouldProvideEpicCompletionsForJavaCode() {
+            // Given
+            String text = "public class EpicClass {";
+            Integer position = text.length();
+
+            // When
+            Map<String, Object> result = mcpService.getCompletions(text, position);
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> completions = (List<Map<String, Object>>) result.get("completions");
+            assertNotNull(completions);
+            assertTrue(completions.size() > 0);
+
+            // Should have some Java-related completions
+            boolean hasJavaCompletion = completions.stream()
+                    .anyMatch(c -> ((String) c.get("text")).contains("public") ||
+                            ((String) c.get("text")).contains("private"));
+            assertTrue(hasJavaCompletion);
+        }
+
+        @Test
+        @DisplayName("Should handle null position in completions")
+        void shouldHandleNullPositionInCompletions() {
+            // Given
+            String text = "epic code";
+
+            // When
+            Map<String, Object> result = mcpService.getCompletions(text, null);
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> completions = (List<Map<String, Object>>) result.get("completions");
+            assertNotNull(completions);
+        }
+    }
+
+    @Nested
+    @DisplayName("🔥 Operation Cancellation Tests")
+    class CancellationTests {
+
+        @Test
+        @DisplayName("Should cancel operation with progress token")
+        void shouldCancelOperationWithProgressToken() {
+            // Given
+            String progressToken = "epic_operation_123";
+
+            // When
+            Map<String, Object> result = mcpService.cancelOperation(progressToken);
+
+            // Then
+            assertNotNull(result);
+            assertTrue((Boolean) result.get("cancelled"));
+            assertEquals(progressToken, result.get("progressToken"));
+        }
+
+        @Test
+        @DisplayName("Should handle cancellation without progress token")
+        void shouldHandleCancellationWithoutProgressToken() {
+            // When
+            Map<String, Object> result = mcpService.cancelOperation(null);
+
+            // Then
+            assertNotNull(result);
+            assertFalse((Boolean) result.get("cancelled"));
+            assertEquals("No progress token provided", result.get("error"));
+        }
+    }
+}
