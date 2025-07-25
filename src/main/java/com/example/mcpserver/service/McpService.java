@@ -208,39 +208,53 @@ public class McpService {
     }
 
     public Map<String, Object> callTool(String toolName, Map<String, Object> arguments) {
-        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> mcpResponse = new HashMap<>();
 
         try {
+            Map<String, Object> toolResult;
             switch (toolName) {
                 case "generate_text":
-                    result = generateText(arguments);
+                    toolResult = generateText(arguments);
                     break;
                 case "analyze_data":
-                    result = analyzeData(arguments);
+                    toolResult = analyzeData(arguments);
                     break;
                 default:
-                    // 🎸 Epic 2112-style error handling instead of throwing! 🎸
+                    // Return MCP-compliant error response
                     logger.warn("🔥 Unknown tool requested: {}", toolName);
-                    result.put("isError", true);
-                    result.put("content",
-                            List.of(Map.of("type", "text", "text", "🎸 Epic tool not found!")));
-                    result.put("mimeType", "text/plain");
-                    result.put("error", "Unknown tool: " + toolName);
-                    result.put("availableTools", List.of("generate_text", "analyze_data"));
-                    return result;
+                    mcpResponse.put("content", List.of(Map.of("type", "text", "text",
+                            "🎸 Epic tool not found! Available tools: generate_text, analyze_data")));
+                    mcpResponse.put("isError", true);
+                    return mcpResponse;
             }
+
+            // Extract content from tool result and return in MCP format
+            Boolean isError = (Boolean) toolResult.get("isError");
+            if (isError != null && isError) {
+                // Tool returned an error - extract the content
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> content = (List<Map<String, Object>>) toolResult.get("content");
+                mcpResponse.put("content",
+                        content != null ? content : List.of(Map.of("type", "text", "text", "Tool execution failed")));
+                mcpResponse.put("isError", true);
+            } else {
+                // Tool succeeded - extract the content
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> content = (List<Map<String, Object>>) toolResult.get("content");
+                mcpResponse.put("content",
+                        content != null ? content : List.of(Map.of("type", "text", "text", "No content returned")));
+                mcpResponse.put("isError", false);
+            }
+
         } catch (Exception e) {
             // 🎸 Epic error handling for any other issues! 🎸
             logger.error("💥 Tool execution failed for {}: {}", toolName, e.getMessage(), e);
-            result.put("isError", true);
-            result.put("content",
+            mcpResponse.put("content",
                     List.of(Map.of("type", "text", "text", "🔥 Tool execution failed: " + e.getMessage())));
-            result.put("mimeType", "text/plain");
-            result.put("error", e.getMessage());
-            result.put("toolName", toolName);
+            mcpResponse.put("isError", true);
         }
 
-        return result;
+        return mcpResponse;
     }
 
     private Map<String, Object> generateText(Map<String, Object> arguments) {
@@ -320,7 +334,8 @@ public class McpService {
         try {
             // 🎸 Epic defensive coding! 🎸
             if (arguments == null) {
-                result.put("content", "🔥 No arguments provided for data analysis!");
+                result.put("content",
+                        List.of(Map.of("type", "text", "text", "🔥 No arguments provided for data analysis!")));
                 result.put("isError", true);
                 result.put("mimeType", "text/markdown");
                 return result;
@@ -330,14 +345,16 @@ public class McpService {
             String analysisType = (String) arguments.get("analysisType");
 
             if (data == null || data.trim().isEmpty()) {
-                result.put("content", "🎸 Data is required for epic analysis!");
+                result.put("content",
+                        List.of(Map.of("type", "text", "text", "🎸 Data is required for epic analysis!")));
                 result.put("isError", true);
                 result.put("mimeType", "text/markdown");
                 return result;
             }
 
             if (analysisType == null || analysisType.trim().isEmpty()) {
-                result.put("content", "🔥 Analysis type is required! Choose: summary, trends, or insights");
+                result.put("content", List.of(Map.of("type", "text", "text",
+                        "🔥 Analysis type is required! Choose: summary, trends, or insights")));
                 result.put("isError", true);
                 result.put("mimeType", "text/markdown");
                 return result;
@@ -349,7 +366,8 @@ public class McpService {
                             "Perform a %s analysis on the following data:\n\n%s\n\nProvide insights and key findings.",
                             analysisType, data);
                     ChatResponse response = chatClient.call(new org.springframework.ai.chat.prompt.Prompt(prompt));
-                    result.put("content", response.getResult().getOutput().getContent());
+                    result.put("content",
+                            List.of(Map.of("type", "text", "text", response.getResult().getOutput().getContent())));
                     result.put("isError", false);
                 } catch (Exception e) {
                     logger.error("💥 AI analysis failed", e);
@@ -359,9 +377,9 @@ public class McpService {
                 }
             } else {
                 // Fallback when AI client is not configured
-                result.put("content", String.format(
+                result.put("content", List.of(Map.of("type", "text", "text", String.format(
                         "🎸 AI client not configured. Epic mock %s analysis for data: %s",
-                        analysisType, data.length() > 100 ? data.substring(0, 100) + "..." : data));
+                        analysisType, data.length() > 100 ? data.substring(0, 100) + "..." : data))));
                 result.put("isError", false);
             }
 

@@ -117,16 +117,20 @@ class AzureOpenAIIntegrationTest {
         assertNotNull(result, "Result should not be null");
         assertFalse((Boolean) result.get("isError"), "Should not have error: " + result.get("content"));
 
-        String content = (String) result.get("content");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> content = (List<Map<String, Object>>) result.get("content");
         assertNotNull(content, "Analysis content should not be null");
         assertFalse(content.isEmpty(), "Analysis content should not be empty");
-        assertTrue(content.length() > 30, "Analysis should be detailed");
+
+        String firstContentText = (String) content.get(0).get("text");
+        assertNotNull(firstContentText, "Analysis text should not be null");
+        assertTrue(firstContentText.length() > 30, "Analysis should be detailed");
 
         // Should not be a mock response
-        assertFalse(content.contains("🎸 AI client not configured"), "Should use real AI, not mock");
+        assertFalse(firstContentText.contains("🎸 AI client not configured"), "Should use real AI, not mock");
 
         // Should contain analysis-related content
-        String lowerContent = content.toLowerCase();
+        String lowerContent = firstContentText.toLowerCase();
         assertTrue(
                 lowerContent.contains("trend") ||
                         lowerContent.contains("increase") ||

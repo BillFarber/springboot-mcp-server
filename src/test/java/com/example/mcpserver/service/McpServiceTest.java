@@ -149,12 +149,7 @@ class McpServiceTest {
             assertFalse(contentList.isEmpty());
             String contentText = (String) contentList.get(0).get("text");
             assertTrue(contentText.contains("🎸 Epic tool not found!"));
-            assertEquals("Unknown tool: " + unknownTool, result.get("error"));
-
-            @SuppressWarnings("unchecked")
-            List<String> availableTools = (List<String>) result.get("availableTools");
-            assertTrue(availableTools.contains("generate_text"));
-            assertTrue(availableTools.contains("analyze_data"));
+            assertTrue(contentText.contains("Available tools: generate_text, analyze_data"));
         }
 
         @Test
@@ -227,7 +222,6 @@ class McpServiceTest {
             assertFalse(contentList.isEmpty());
             String contentText = (String) contentList.get(0).get("text");
             assertEquals("Epic AI-generated song about code!", contentText);
-            assertEquals("text/plain", result.get("mimeType"));
             verify(mockChatClient).call(any(org.springframework.ai.chat.prompt.Prompt.class));
         }
 
@@ -278,7 +272,6 @@ class McpServiceTest {
             assertFalse(contentList.isEmpty());
             String contentText = (String) contentList.get(0).get("text");
             assertTrue(contentText.contains("🔥 AI response was incomplete"));
-            assertEquals("text/plain", result.get("mimeType"));
         }
     }
 

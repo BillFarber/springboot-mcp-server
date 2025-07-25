@@ -14,6 +14,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.*;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -145,7 +146,7 @@ class McpControllerIntegrationTest {
                 .andExpect(jsonPath("$.jsonrpc").value("2.0"))
                 .andExpect(jsonPath("$.id").value(4))
                 .andExpect(jsonPath("$.result.isError").value(true))
-                .andExpect(jsonPath("$.result.content[0].text").value("🎸 Epic tool not found!"));
+                .andExpect(jsonPath("$.result.content[0].text").value(containsString("🎸 Epic tool not found!")));
     }
 
     @Test
