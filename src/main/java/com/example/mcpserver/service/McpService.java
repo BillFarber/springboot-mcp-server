@@ -201,15 +201,21 @@ public class McpService {
 
         switch (uri) {
             case "mcp://server/info":
-                result.put("uri", uri);
-                result.put("mimeType", "application/json");
-                result.put("text",
+                Map<String, Object> serverInfoContent = new HashMap<>();
+                serverInfoContent.put("uri", uri);
+                serverInfoContent.put("mimeType", "application/json");
+                serverInfoContent.put("text",
                         "{\"server\":\"SpringBoot MCP Server\",\"version\":\"1.0.0\",\"capabilities\":[\"tools\",\"resources\"]}");
+
+                result.put("contents", List.of(serverInfoContent));
                 break;
             case "mcp://tools/examples":
-                result.put("uri", uri);
-                result.put("mimeType", "text/markdown");
-                result.put("text", getToolExamples());
+                Map<String, Object> examplesContent = new HashMap<>();
+                examplesContent.put("uri", uri);
+                examplesContent.put("mimeType", "text/markdown");
+                examplesContent.put("text", getToolExamples());
+
+                result.put("contents", List.of(examplesContent));
                 break;
             default:
                 throw new IllegalArgumentException("Unknown resource: " + uri);
