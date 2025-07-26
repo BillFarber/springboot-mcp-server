@@ -44,4 +44,64 @@ springBoot {
 
 tasks.named('test') {
     useJUnitPlatform()
+    
+    // Load environment variables from .env file for all tests
+    doFirst {
+        def envFile = file('.env')
+        if (envFile.exists()) {
+            println "🎸 Loading .env file for epic tests..."
+            envFile.readLines().each { line ->
+                if (line && !line.startsWith('#') && line.contains('=')) {
+                    def (key, value) = line.split('=', 2)
+                    environment key.trim(), value.trim()
+                    println "   Set: ${key.trim()}"
+                }
+            }
+        } else {
+            println "⚠️  No .env file found - Azure OpenAI integration tests may fail"
+            println "   Create .env with AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_DEPLOYMENT_NAME"
+        }
+    }
+    
+    // Enhanced test result reporting
+    testLogging {
+        events "passed", "skipped", "failed", "standardOut", "standardError"
+        showExceptions true
+        showCauses true
+        showStackTraces true
+        exceptionFormat "full"
+    }
+    
+    // Custom test result summary
+    afterSuite { desc, result ->
+        if (!desc.parent) { // will match the outermost suite
+            def output = ""
+            def total = result.testCount
+            def passed = result.successfulTestCount
+            def failed = result.failedTestCount
+            def skipped = result.skippedTestCount
+            
+            if (result.resultType == TestResult.ResultType.SUCCESS) {
+                output = """
+🎸 Epic Test Results - 2112 Style! 🎸
+═══════════════════════════════════════
+✅ All tests passed successfully!
+📊 Total: ${total} | ✅ Passed: ${passed} | ⏭️ Skipped: ${skipped}
+⏱️ Time: ${(result.endTime - result.startTime) / 1000}s
+🚀 Ready to rock! All systems go!
+═══════════════════════════════════════"""
+            } else {
+                output = """
+🎸 Epic Test Results - 2112 Style! 🎸
+═══════════════════════════════════════
+❌ Some tests failed!
+📊 Total: ${total} | ✅ Passed: ${passed} | ❌ Failed: ${failed} | ⏭️ Skipped: ${skipped}
+⏱️ Time: ${(result.endTime - result.startTime) / 1000}s
+🔧 Check the details above and fix the issues!
+═══════════════════════════════════════"""
+            }
+            
+            println output
+        }
+    }
 }

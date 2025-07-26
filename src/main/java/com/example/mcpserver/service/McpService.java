@@ -113,15 +113,10 @@ public class McpService {
         Map<String, Object> opticSchema = Map.of(
                 "type", "object",
                 "properties", Map.of(
-                        "schema", Map.of(
+                        "prompt", Map.of(
                                 "type", "string",
-                                "description", "The schema name to use in the optic code",
-                                "default", "schema"),
-                        "view", Map.of(
-                                "type", "string",
-                                "description", "The view name to use in the optic code",
-                                "default", "view")),
-                "required", List.of());
+                                "description", "The user's prompt describing what optic code to generate")),
+                "required", List.of("prompt"));
 
         tools.add(new Tool(
                 "optic_code_generator",
@@ -426,27 +421,92 @@ public class McpService {
         Map<String, Object> result = new HashMap<>();
 
         try {
-            // Extract schema and view parameters, with defaults
-            String schema = "schema";
-            String view = "view";
+            // Extract prompt parameter - this is now required
+            if (arguments == null) {
+                result.put("content",
+                        List.of(Map.of("type", "text", "text", "🔥 No arguments provided for optic code generation!")));
+                result.put("isError", true);
+                result.put("mimeType", "text/plain");
+                return result;
+            }
 
-            if (arguments != null) {
-                if (arguments.get("schema") != null) {
-                    schema = (String) arguments.get("schema");
-                }
-                if (arguments.get("view") != null) {
-                    view = (String) arguments.get("view");
+            String userPrompt = (String) arguments.get("prompt");
+            if (userPrompt == null || userPrompt.trim().isEmpty()) {
+                result.put("content",
+                        List.of(Map.of("type", "text", "text",
+                                "🎸 Prompt is required for epic optic code generation!")));
+                result.put("isError", true);
+                result.put("mimeType", "text/plain");
+                return result;
+            }
+
+            // Create a comprehensive prompt for the LLM to generate optic code
+            String systemPrompt = String.format(
+                    """
+                            You are an expert optic code generator inspired by the precision and versatility of the band Rush.
+                            Generate optic code based on the user's request. Optic code is used for data transformation and manipulation.
+
+                            Common optic operations include:
+                            - op.fromView(schema, view) - Read from a data view
+                            - op.toView(schema, view) - Write to a data view
+                            - op.select([fields]) - Select specific fields
+                            - op.where(conditions) - Filter data
+                            - op.join(other, condition) - Join with other data
+                            - op.transform(function) - Transform data
+                            - op.aggregate(functions) - Aggregate data
+                            - op.orderBy(fields) - Sort data
+
+                            User's request: %s
+
+                            Generate practical, well-commented optic code that fulfills the user's request.
+                            Include 🎸 Rush-inspired comments for style, but keep the code functional and clear.
+                            """,
+                    userPrompt);
+
+            if (chatClient != null) {
+                try {
+                    logger.debug("🎸 Generating optic code with LLM for prompt: {}", userPrompt);
+                    ChatResponse response = chatClient
+                            .call(new org.springframework.ai.chat.prompt.Prompt(systemPrompt));
+
+                    if (response != null && response.getResult() != null) {
+                        String generatedCode = response.getResult().getOutput().getContent();
+                        result.put("content", List.of(Map.of("type", "text", "text", generatedCode)));
+                        result.put("isError", false);
+                        logger.info("🎸 Successfully generated optic code using LLM for prompt: '{}'", userPrompt);
+                        result.put("mimeType", "text/javascript");
+                        return result;
+                    } else {
+                        logger.warn("🔥 AI response was incomplete - falling back to template");
+                    }
+                } catch (Exception e) {
+                    logger.warn("� LLM optic code generation failed - falling back to template: {}", e.getMessage());
                 }
             }
 
-            // Generate the optic code - inspired by Rush's precision and talents
-            String opticCode = String.format("op.fromView('%s','%s')", schema, view);
+            // Fallback when AI client is not configured or fails - provide a basic template
+            logger.warn("ChatClient is null or failed - using fallback optic code generation");
+            String fallbackCode = String.format("""
+                    // 🎸 AI client not configured - Epic fallback optic code for: %s
 
-            result.put("content", List.of(Map.of("type", "text", "text", opticCode)));
+                    // Basic optic code template - customize as needed
+                    const result = op.fromView('schema', 'view')
+                      .select(['*'])
+                      .where(op.ne('deleted', true))
+                      .orderBy('id')
+                      .result();
+
+                    console.log('🎸 Optic code generated for: %s', result);
+
+                    // TODO: Customize this template based on your specific needs
+                    // This is a fallback template when AI is not available
+                    """, userPrompt, userPrompt);
+
+            result.put("content", List.of(Map.of("type", "text", "text", fallbackCode)));
             result.put("isError", false);
-            result.put("mimeType", "text/plain");
+            logger.info("🎸 Generated fallback optic code for prompt: '{}'", userPrompt);
 
-            logger.info("🎸 Generated optic code with schema='{}' and view='{}'", schema, view);
+            result.put("mimeType", "text/javascript");
 
         } catch (Exception e) {
             logger.error("💥 Unexpected error in generateOpticCode", e);
@@ -559,20 +619,21 @@ public class McpService {
                   "params": {
                     "name": "optic_code_generator",
                     "arguments": {
-                      "schema": "users",
-                      "view": "profile"
+                      "prompt": "Create optic code to read user profiles from the database, filter active users, and transform the data by adding a full name field"
                     }
                   }
                 }
                 ```
 
-                Default usage (no arguments):
+                Advanced usage:
                 ```json
                 {
                   "method": "tools/call",
                   "params": {
                     "name": "optic_code_generator",
-                    "arguments": {}
+                    "arguments": {
+                      "prompt": "Generate optic code to aggregate sales data by month, calculate totals, and sort by highest revenue first"
+                    }
                   }
                 }
                 ```
@@ -640,37 +701,52 @@ public class McpService {
                     - Returns error if data or analysisType is missing
                     - Validates analysisType against allowed values
                     """;
-            case "optic_code_generator" -> """
-                    # Optic Code Generator Tool Documentation
+            case "optic_code_generator" ->
+                """
+                        # Optic Code Generator Tool Documentation
 
-                    ## Overview
-                    The `optic_code_generator` tool generates optic code snippets for data transformation.
-                    Inspired by Rush's many talents, this tool creates optic lens expressions.
+                        ## Overview
+                        The `optic_code_generator` tool leverages AI to generate sophisticated optic code snippets for data transformation.
+                        Inspired by Rush's many talents, this tool creates custom optic expressions based on your specific requirements.
 
-                    ## Parameters
-                    - **schema** (optional): The schema name to use in the optic code (default: "schema")
-                    - **view** (optional): The view name to use in the optic code (default: "view")
+                        ## Parameters
+                        - **prompt** (required): Your description of what optic code you need generated
 
-                    ## Example Usage
-                    ```json
-                    {
-                      "name": "optic_code_generator",
-                      "arguments": {
-                        "schema": "users",
-                        "view": "profile"
-                      }
-                    }
-                    ```
+                        ## Example Usage
+                        ```json
+                        {
+                          "name": "optic_code_generator",
+                          "arguments": {
+                            "prompt": "Create optic code to read user profiles from the database, filter active users, and transform the data by adding a full name field"
+                          }
+                        }
+                        ```
 
-                    ## Expected Response
-                    Returns a formatted optic code string: `op.fromView('schema','view')`
+                        ```json
+                        {
+                          "name": "optic_code_generator",
+                          "arguments": {
+                            "prompt": "Generate optic code to aggregate sales data by month and calculate totals"
+                          }
+                        }
+                        ```
 
-                    ## Default Usage
-                    When called with no arguments, returns: `op.fromView('schema','view')`
+                        ## Expected Response
+                        Returns AI-generated optic code tailored to your specific requirements, complete with:
+                        - Proper optic syntax and structure
+                        - Relevant comments and explanations
+                        - Rush-inspired styling for epic code generation
 
-                    ## Rush Connection
-                    Like the band Rush, this tool demonstrates versatility and precision in code generation.
-                    """;
+                        ## AI-Powered Features
+                        - Understands complex data transformation requirements
+                        - Generates contextually appropriate optic operations
+                        - Includes best practices and error handling
+                        - Provides Rush-level precision in code generation
+
+                        ## Rush Connection
+                        Like the band Rush's progressive and intricate compositions, this tool creates sophisticated,
+                        well-structured optic code that adapts to your unique data transformation needs.
+                        """;
             default -> null;
         };
     }
