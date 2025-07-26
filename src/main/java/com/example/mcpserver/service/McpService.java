@@ -17,6 +17,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -440,37 +442,40 @@ public class McpService {
                 return result;
             }
 
+            // Load comprehensive Optic examples for the LLM
+            String opticExamples = loadOpticExamples();
+
             // Create a comprehensive prompt for the LLM to generate optic code
             String systemPrompt = String.format(
                     """
-                            You are an expert optic code generator inspired by the precision and versatility of the band Rush.
-                            Generate optic code based on the user's request. Optic code is used for data transformation and manipulation.
+                            You are an expert MarkLogic Optic code generator.
+                            Generate optic code based on the user's request inspired by the precision and versatility of the band Rush.
+                            Optic code is used for reading rows of data from MarkLogic databases and then data transformation and manipulation.
 
-                            Common optic operations include:
-                            - op.fromView(schema, view) - Read from a data view
-                            - op.toView(schema, view) - Write to a data view
-                            - op.select([fields]) - Select specific fields
-                            - op.where(conditions) - Filter data
-                            - op.join(other, condition) - Join with other data
-                            - op.transform(function) - Transform data
-                            - op.aggregate(functions) - Aggregate data
-                            - op.orderBy(fields) - Sort data
+                            Here are comprehensive examples of MarkLogic Optic API functions to reference:
+
+                            %s
+
+                            Based on these examples and the user's specific request below, generate practical, well-commented optic code that fulfills the user's request.
+                            Use the appropriate patterns and functions from the examples above.
+                            Include 🎸 Rush-inspired comments for style, but keep the code functional and clear.
 
                             User's request: %s
 
-                            Generate practical, well-commented optic code that fulfills the user's request.
-                            Include 🎸 Rush-inspired comments for style, but keep the code functional and clear.
+                            Generate the most appropriate optic code solution using the patterns and functions demonstrated in the examples.
                             """,
-                    userPrompt);
+                    opticExamples, userPrompt);
 
             if (chatClient != null) {
                 try {
                     logger.debug("🎸 Generating optic code with LLM for prompt: {}", userPrompt);
+                    logger.debug("🎸 System prompt being sent to LLM: {}", systemPrompt);
                     ChatResponse response = chatClient
                             .call(new org.springframework.ai.chat.prompt.Prompt(systemPrompt));
 
                     if (response != null && response.getResult() != null) {
                         String generatedCode = response.getResult().getOutput().getContent();
+                        logger.debug("🎸 LLM response received: {}", generatedCode);
                         result.put("content", List.of(Map.of("type", "text", "text", generatedCode)));
                         result.put("isError", false);
                         logger.info("🎸 Successfully generated optic code using LLM for prompt: '{}'", userPrompt);
@@ -1211,5 +1216,273 @@ public class McpService {
         }
 
         return result;
+    }
+
+    /**
+     * 🎸 Load comprehensive Optic examples for LLM context - Epic knowledge base!
+     * 🎸
+     */
+    private String loadOpticExamples() {
+        try {
+            // Try to load from the examples file in resources
+            org.springframework.core.io.Resource resource = applicationContext
+                    .getResource("classpath:optic-examples.js");
+            if (resource != null && resource.exists()) {
+                InputStream inputStream = resource.getInputStream();
+                return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            } else {
+                logger.warn("🔥 Optic examples file not found in classpath, using fallback examples");
+            }
+        } catch (IOException | NullPointerException e) {
+            logger.warn("🔥 Could not load optic examples file: {}", e.getMessage());
+        }
+
+        // Return a comprehensive set of examples as fallback
+        return """
+                // 🎸 Comprehensive MarkLogic Optic API Examples - Rush 2112 Style! 🎸
+
+                // ============================================================================
+                // 🎸 BASIC QUERY OPERATIONS - The Foundation 🎸
+                // ============================================================================
+
+                // Basic view query - Read data from a TDE view
+                const basicViewQuery = op.fromView('employees', 'employee_details')
+                  .result();
+
+                // Select specific columns
+                const selectColumns = op.fromView('products', 'catalog')
+                  .select(['product_id', 'name', 'price', 'category'])
+                  .result();
+
+                // ============================================================================
+                // 🎸 FILTERING AND CONDITIONS - Where the Magic Happens 🎸
+                // ============================================================================
+
+                // Filter rows with conditions
+                const filteredData = op.fromView('orders', 'order_details')
+                  .where(op.and(
+                    op.ge(op.col('order_date'), '2024-01-01'),
+                    op.eq(op.col('status'), 'completed'),
+                    op.gt(op.col('total_amount'), 100)
+                  ))
+                  .result();
+
+                // ============================================================================
+                // 🎸 JOINING DATA - Bringing It All Together 🎸
+                // ============================================================================
+
+                // Inner join between datasets
+                const innerJoinExample = op.fromView('orders', 'order_summary')
+                  .joinInner(
+                    op.fromView('customers', 'customer_info'),
+                    op.on(op.col('customer_id'), op.col('id'))
+                  )
+                  .select([
+                    'order_id',
+                    'order_date',
+                    'customer_name',
+                    'customer_email',
+                    'total_amount'
+                  ])
+                  .result();
+
+                // Left outer join
+                const leftJoinExample = op.fromView('products', 'inventory')
+                  .joinLeftOuter(
+                    op.fromView('sales', 'product_sales'),
+                    op.on(op.col('product_id'), op.col('product_id'))
+                  )
+                  .select([
+                    'product_name',
+                    'current_stock',
+                    op.as('total_sold', op.col('quantity_sold'))
+                  ])
+                  .result();
+
+                // ============================================================================
+                // 🎸 AGGREGATION - The Power of Numbers 🎸
+                // ============================================================================
+
+                // Group by with aggregation functions
+                const groupedAggregation = op.fromView('sales', 'daily_transactions')
+                  .groupBy([
+                    'region',
+                    'product_category'
+                  ], [
+                    op.as('total_sales', op.sum(op.col('amount'))),
+                    op.as('avg_order_value', op.avg(op.col('amount'))),
+                    op.as('transaction_count', op.count()),
+                    op.as('max_single_sale', op.max(op.col('amount')))
+                  ])
+                  .result();
+
+                // ============================================================================
+                // 🎸 SORTING AND ORDERING - Arrange with Precision 🎸
+                // ============================================================================
+
+                // Sort results
+                const sortedResults = op.fromView('products', 'bestsellers')
+                  .orderBy([
+                    op.desc('total_sales'),
+                    'product_name',
+                    op.asc('price')
+                  ])
+                  .result();
+
+                // ============================================================================
+                // 🎸 MATHEMATICAL OPERATIONS - Calculate Like a Rock Star 🎸
+                // ============================================================================
+
+                // Mathematical functions in select
+                const mathematicalOperations = op.fromView('financial', 'investments')
+                  .select([
+                    'account_id',
+                    'principal_amount',
+                    'interest_rate',
+                    // Simple interest calculation
+                    op.as('simple_interest', op.multiply(
+                      op.col('principal_amount'),
+                      op.col('interest_rate'),
+                      op.col('years')
+                    )),
+                    // Percentage calculations
+                    op.as('growth_percentage', op.multiply(
+                      op.divide(
+                        op.subtract(op.col('current_value'), op.col('principal_amount')),
+                        op.col('principal_amount')
+                      ),
+                      100
+                    ))
+                  ])
+                  .result();
+
+                // ============================================================================
+                // 🎸 STRING OPERATIONS - Text Manipulation Mastery 🎸
+                // ============================================================================
+
+                // String functions for text processing
+                const stringOperations = op.fromView('users', 'profiles')
+                  .select([
+                    'user_id',
+                    op.as('full_name', op.concat(op.col('first_name'), ' ', op.col('last_name'))),
+                    op.as('name_length', op.length(op.concat(op.col('first_name'), op.col('last_name')))),
+                    op.as('email_domain', op.substring(op.col('email'), op.add(op.indexOf(op.col('email'), '@'), 1))),
+                    op.as('username_upper', op.upper(op.col('username')))
+                  ])
+                  .result();
+
+                // ============================================================================
+                // 🎸 DATE AND TIME OPERATIONS - Temporal Precision 🎸
+                // ============================================================================
+
+                // Date/time functions and calculations
+                const dateTimeOperations = op.fromView('events', 'calendar')
+                  .select([
+                    'event_id',
+                    'event_name',
+                    'start_time',
+                    // Extract date components
+                    op.as('year', op.year(op.col('start_time'))),
+                    op.as('month', op.month(op.col('start_time'))),
+                    op.as('day_of_week', op.dayOfWeek(op.col('start_time'))),
+                    // Calculate durations
+                    op.as('duration_minutes', op.dateDiff('minute', op.col('start_time'), op.col('end_time'))),
+                    op.as('days_until_event', op.dateDiff('day', op.currentDateTime(), op.col('start_time')))
+                  ])
+                  .where(op.ge(op.col('start_time'), op.currentDate()))
+                  .result();
+
+                // ============================================================================
+                // 🎸 CONDITIONAL LOGIC - Decision Making in Queries 🎸
+                // ============================================================================
+
+                // Case expressions for conditional logic
+                const conditionalLogic = op.fromView('customers', 'profiles')
+                  .select([
+                    'customer_id',
+                    'customer_name',
+                    'total_purchases',
+                    // Customer tier based on purchase amount
+                    op.as('customer_tier',
+                      op.case([
+                        op.when(op.ge(op.col('total_purchases'), 10000), 'Platinum'),
+                        op.when(op.ge(op.col('total_purchases'), 5000), 'Gold'),
+                        op.when(op.ge(op.col('total_purchases'), 1000), 'Silver')
+                      ], 'Bronze')
+                    ),
+                    // Handle null values
+                    op.as('description', op.coalesce(op.col('description'), 'No description available'))
+                  ])
+                  .result();
+
+                // ============================================================================
+                // 🎸 LIMITING AND PAGINATION - Control Your Results 🎸
+                // ============================================================================
+
+                // Pagination with limit and offset
+                const paginatedResults = op.fromView('articles', 'blog_posts')
+                  .where(op.eq(op.col('status'), 'published'))
+                  .orderBy([op.desc('publish_date')])
+                  .offset(20)  // Skip first 20 results
+                  .limit(10)   // Return next 10 results
+                  .result();
+
+                // ============================================================================
+                // 🎸 REAL-WORLD BUSINESS EXAMPLES - Epic Scenarios 🎸
+                // ============================================================================
+
+                // Customer Analytics Dashboard Query
+                const customerAnalytics = op.fromView('customers', 'profiles')
+                  .joinLeftOuter(
+                    op.fromView('orders', 'summary')
+                      .groupBy(['customer_id'], [
+                        op.as('total_orders', op.count()),
+                        op.as('total_spent', op.sum(op.col('amount'))),
+                        op.as('avg_order_value', op.avg(op.col('amount')))
+                      ]),
+                    op.on(op.col('customer_id'), op.col('customer_id'))
+                  )
+                  .select([
+                    'customer_id',
+                    'customer_name',
+                    'email',
+                    op.as('lifetime_value', op.coalesce(op.col('total_spent'), 0)),
+                    op.as('customer_segment',
+                      op.case([
+                        op.when(op.ge(op.coalesce(op.col('total_spent'), 0), 5000), 'VIP'),
+                        op.when(op.ge(op.coalesce(op.col('total_spent'), 0), 1000), 'Premium'),
+                        op.when(op.gt(op.coalesce(op.col('total_orders'), 0), 0), 'Active')
+                      ], 'Inactive')
+                    )
+                  ])
+                  .orderBy([op.desc('lifetime_value')])
+                  .result();
+
+                // Financial Reporting Query
+                const financialReporting = op.fromView('transactions', 'financial')
+                  .where(op.ge(op.col('transaction_date'), '2024-01-01'))
+                  .groupBy([
+                    op.as('year', op.year(op.col('transaction_date'))),
+                    op.as('month', op.month(op.col('transaction_date'))),
+                    'department'
+                  ], [
+                    op.as('monthly_revenue', op.sum(
+                      op.when(op.eq(op.col('transaction_type'), 'revenue'), op.col('amount'), 0)
+                    )),
+                    op.as('monthly_expenses', op.sum(
+                      op.when(op.eq(op.col('transaction_type'), 'expense'), op.col('amount'), 0)
+                    ))
+                  ])
+                  .select([
+                    'year',
+                    'month',
+                    'department',
+                    'monthly_revenue',
+                    'monthly_expenses',
+                    op.as('net_income', op.subtract(op.col('monthly_revenue'), op.col('monthly_expenses')))
+                  ])
+                  .orderBy(['year', 'month', 'department'])
+                  .result();
+                """;
     }
 }
