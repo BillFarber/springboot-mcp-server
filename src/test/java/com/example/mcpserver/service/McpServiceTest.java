@@ -108,7 +108,7 @@ class McpServiceTest {
 
             // Then
             assertNotNull(tools);
-            assertEquals(2, tools.size());
+            assertEquals(3, tools.size());
 
             Tool generateTextTool = tools.stream()
                     .filter(t -> "generate_text".equals(t.getName()))
@@ -123,6 +123,13 @@ class McpServiceTest {
                     .orElse(null);
             assertNotNull(analyzeDataTool);
             assertEquals("Analyze data and provide insights using AI", analyzeDataTool.getDescription());
+
+            Tool opticCodeTool = tools.stream()
+                    .filter(t -> "optic_code_generator".equals(t.getName()))
+                    .findFirst()
+                    .orElse(null);
+            assertNotNull(opticCodeTool);
+            assertEquals("Generate optic code snippets for data transformation", opticCodeTool.getDescription());
         }
     }
 
@@ -149,7 +156,7 @@ class McpServiceTest {
             assertFalse(contentList.isEmpty());
             String contentText = (String) contentList.get(0).get("text");
             assertTrue(contentText.contains("🎸 Epic tool not found!"));
-            assertTrue(contentText.contains("Available tools: generate_text, analyze_data"));
+            assertTrue(contentText.contains("Available tools: generate_text, analyze_data, optic_code_generator"));
         }
 
         @Test
@@ -272,6 +279,48 @@ class McpServiceTest {
             assertFalse(contentList.isEmpty());
             String contentText = (String) contentList.get(0).get("text");
             assertTrue(contentText.contains("🔥 AI response was incomplete"));
+        }
+
+        @Test
+        @DisplayName("Should generate optic code with default parameters")
+        void shouldGenerateOpticCodeWithDefaults() {
+            // Given
+            Map<String, Object> arguments = Map.of();
+
+            // When
+            Map<String, Object> result = mcpService.callTool("optic_code_generator", arguments);
+
+            // Then
+            assertNotNull(result);
+            assertFalse((Boolean) result.get("isError"));
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contentList = (List<Map<String, Object>>) result.get("content");
+            assertNotNull(contentList);
+            assertFalse(contentList.isEmpty());
+            String contentText = (String) contentList.get(0).get("text");
+            assertEquals("op.fromView('schema','view')", contentText);
+        }
+
+        @Test
+        @DisplayName("Should generate optic code with custom parameters")
+        void shouldGenerateOpticCodeWithCustomParams() {
+            // Given
+            Map<String, Object> arguments = Map.of(
+                    "schema", "users",
+                    "view", "profile");
+
+            // When
+            Map<String, Object> result = mcpService.callTool("optic_code_generator", arguments);
+
+            // Then
+            assertNotNull(result);
+            assertFalse((Boolean) result.get("isError"));
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contentList = (List<Map<String, Object>>) result.get("content");
+            assertNotNull(contentList);
+            assertFalse(contentList.isEmpty());
+            String contentText = (String) contentList.get(0).get("text");
+            assertEquals("op.fromView('users','profile')", contentText);
         }
     }
 
@@ -466,6 +515,200 @@ class McpServiceTest {
             assertEquals("mcp://server/info", content.get("uri"));
             assertEquals("application/json", content.get("mimeType"));
             assertNotNull(content.get("text"));
+        }
+
+        @Test
+        @DisplayName("Should read tool examples resource")
+        void shouldReadToolExamplesResource() {
+            // When
+            Map<String, Object> result = mcpService.readResource("mcp://tools/examples");
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contents = (List<Map<String, Object>>) result.get("contents");
+            assertEquals(1, contents.size());
+
+            Map<String, Object> content = contents.get(0);
+            assertEquals("mcp://tools/examples", content.get("uri"));
+            assertEquals("text/markdown", content.get("mimeType"));
+
+            String text = (String) content.get("text");
+            assertNotNull(text);
+            assertTrue(text.contains("# Tool Usage Examples"));
+            assertTrue(text.contains("## Generate Text Tool"));
+            assertTrue(text.contains("## Analyze Data Tool"));
+            assertTrue(text.contains("## Optic Code Generator Tool"));
+            assertTrue(text.contains("optic_code_generator"));
+            assertTrue(text.contains("schema"));
+            assertTrue(text.contains("view"));
+        }
+
+        @Test
+        @DisplayName("Should read generate_text tool documentation")
+        void shouldReadGenerateTextToolDocs() {
+            // When
+            Map<String, Object> result = mcpService.readResource("mcp://tools/generate_text/docs");
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contents = (List<Map<String, Object>>) result.get("contents");
+            assertEquals(1, contents.size());
+
+            Map<String, Object> content = contents.get(0);
+            assertEquals("mcp://tools/generate_text/docs", content.get("uri"));
+            assertEquals("text/markdown", content.get("mimeType"));
+
+            String text = (String) content.get("text");
+            assertNotNull(text);
+            assertTrue(text.contains("# Generate Text Tool Documentation"));
+            assertTrue(text.contains("prompt"));
+            assertTrue(text.contains("maxTokens"));
+        }
+
+        @Test
+        @DisplayName("Should read analyze_data tool documentation")
+        void shouldReadAnalyzeDataToolDocs() {
+            // When
+            Map<String, Object> result = mcpService.readResource("mcp://tools/analyze_data/docs");
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contents = (List<Map<String, Object>>) result.get("contents");
+            assertEquals(1, contents.size());
+
+            Map<String, Object> content = contents.get(0);
+            assertEquals("mcp://tools/analyze_data/docs", content.get("uri"));
+            assertEquals("text/markdown", content.get("mimeType"));
+
+            String text = (String) content.get("text");
+            assertNotNull(text);
+            assertTrue(text.contains("# Analyze Data Tool Documentation"));
+            assertTrue(text.contains("analysisType"));
+            assertTrue(text.contains("summary"));
+            assertTrue(text.contains("trends"));
+            assertTrue(text.contains("insights"));
+        }
+
+        @Test
+        @DisplayName("Should read optic_code_generator tool documentation")
+        void shouldReadOpticCodeGeneratorToolDocs() {
+            // When
+            Map<String, Object> result = mcpService.readResource("mcp://tools/optic_code_generator/docs");
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contents = (List<Map<String, Object>>) result.get("contents");
+            assertEquals(1, contents.size());
+
+            Map<String, Object> content = contents.get(0);
+            assertEquals("mcp://tools/optic_code_generator/docs", content.get("uri"));
+            assertEquals("text/markdown", content.get("mimeType"));
+
+            String text = (String) content.get("text");
+            assertNotNull(text);
+            assertTrue(text.contains("# Optic Code Generator Tool Documentation"));
+            assertTrue(text.contains("schema"));
+            assertTrue(text.contains("view"));
+            assertTrue(text.contains("Rush"));
+            assertTrue(text.contains("op.fromView"));
+        }
+
+        @Test
+        @DisplayName("Should return error for unknown tool documentation")
+        void shouldReturnErrorForUnknownToolDocs() {
+            // When/Then
+            assertThrows(IllegalArgumentException.class, () -> {
+                mcpService.readResource("mcp://tools/unknown_tool/docs");
+            });
+        }
+
+        @Test
+        @DisplayName("Should read debug level logs")
+        void shouldReadDebugLevelLogs() {
+            // When
+            Map<String, Object> result = mcpService.readResource("mcp://logs/debug");
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contents = (List<Map<String, Object>>) result.get("contents");
+            assertEquals(1, contents.size());
+
+            Map<String, Object> content = contents.get(0);
+            assertEquals("mcp://logs/debug", content.get("uri"));
+            assertEquals("text/plain", content.get("mimeType"));
+
+            String text = (String) content.get("text");
+            assertNotNull(text);
+            assertTrue(text.contains("# DEBUG Level Logs"));
+            assertTrue(text.contains("Epic SpringBoot MCP Server Logs"));
+            assertTrue(text.contains("DEBUG"));
+        }
+
+        @Test
+        @DisplayName("Should read info level logs")
+        void shouldReadInfoLevelLogs() {
+            // When
+            Map<String, Object> result = mcpService.readResource("mcp://logs/info");
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contents = (List<Map<String, Object>>) result.get("contents");
+            assertEquals(1, contents.size());
+
+            Map<String, Object> content = contents.get(0);
+            assertEquals("mcp://logs/info", content.get("uri"));
+            assertEquals("text/plain", content.get("mimeType"));
+
+            String text = (String) content.get("text");
+            assertNotNull(text);
+            assertTrue(text.contains("# INFO Level Logs"));
+            assertTrue(text.contains("Starting SpringBoot MCP Server"));
+            assertTrue(text.contains("INFO"));
+        }
+
+        @Test
+        @DisplayName("Should read error level logs")
+        void shouldReadErrorLevelLogs() {
+            // When
+            Map<String, Object> result = mcpService.readResource("mcp://logs/error");
+
+            // Then
+            assertNotNull(result);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contents = (List<Map<String, Object>>) result.get("contents");
+            assertEquals(1, contents.size());
+
+            Map<String, Object> content = contents.get(0);
+            assertEquals("mcp://logs/error", content.get("uri"));
+            assertEquals("text/plain", content.get("mimeType"));
+
+            String text = (String) content.get("text");
+            assertNotNull(text);
+            assertTrue(text.contains("# ERROR Level Logs"));
+            assertTrue(text.contains("💥"));
+            assertTrue(text.contains("ERROR"));
+        }
+
+        @Test
+        @DisplayName("Should return error for invalid log level")
+        void shouldReturnErrorForInvalidLogLevel() {
+            // When/Then
+            assertThrows(IllegalArgumentException.class, () -> {
+                mcpService.readResource("mcp://logs/invalid_level");
+            });
         }
     }
 

@@ -25,13 +25,13 @@ public class McpController {
     @PostMapping
     public ResponseEntity<Map<String, Object>> handleMcpRequest(@RequestBody McpRequest request) {
         logger.debug("handleMcpRequest - DIAGNOSTIC MODE");
-        logger.info("🔍 DEBUG: Received request: method={}, id={}", request.getMethod(), request.getId());
+        logger.debug("🔍 DEBUG: Received request: method={}, id={}", request.getMethod(), request.getId());
 
         try {
             Object result = processRequest(request);
-            logger.info("🔍 DEBUG: Process result type: {}",
+            logger.debug("🔍 DEBUG: Process result type: {}",
                     result != null ? result.getClass().getSimpleName() : "null");
-            logger.info("🔍 DEBUG: Process result: {}", result);
+            logger.debug("🔍 DEBUG: Process result: {}", result);
 
             // Return raw Map for diagnosis instead of McpResponse
             Map<String, Object> response = new java.util.HashMap<>();
@@ -41,11 +41,11 @@ public class McpController {
             response.put("error", null);
 
             // Log the complete response structure
-            logger.info("🔍 DEBUG: Complete response structure:");
-            logger.info("🔍 DEBUG: - jsonrpc: {}", response.get("jsonrpc"));
-            logger.info("🔍 DEBUG: - id: {}", response.get("id"));
-            logger.info("🔍 DEBUG: - result: {}", response.get("result"));
-            logger.info("🔍 DEBUG: - error: {}", response.get("error"));
+            logger.debug("🔍 DEBUG: Complete response structure:");
+            logger.debug("🔍 DEBUG: - jsonrpc: {}", response.get("jsonrpc"));
+            logger.debug("🔍 DEBUG: - id: {}", response.get("id"));
+            logger.debug("🔍 DEBUG: - result: {}", response.get("result"));
+            logger.debug("🔍 DEBUG: - error: {}", response.get("error"));
 
             return ResponseEntity.ok(response);
 
@@ -99,7 +99,7 @@ public class McpController {
             case "notifications/initialized" -> {
                 // This is a notification that doesn't require a response, but we need to handle
                 // it
-                logger.info("🔍 DEBUG: Client initialized notification received");
+                logger.debug("🔍 DEBUG: Client initialized notification received");
                 yield Map.of("success", true);
             }
             case "ping" -> Map.of("result", "pong");

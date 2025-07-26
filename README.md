@@ -26,6 +26,13 @@ Analyze data and provide insights using AI.
 - `data` (string, required): Data to analyze (JSON string or CSV)
 - `analysisType` (string, required): Type of analysis (`summary`, `trends`, `insights`)
 
+### 3. Optic Code Generator (`optic_code_generator`)
+Generate optic code snippets for data transformation - inspired by Rush's many talents.
+
+**Parameters:**
+- `schema` (string, optional): The schema name to use in the optic code (default: "schema")
+- `view` (string, optional): The view name to use in the optic code (default: "view")
+
 ## Available Resources
 
 - `mcp://server/info`: Server information and capabilities
