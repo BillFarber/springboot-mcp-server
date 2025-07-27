@@ -122,8 +122,22 @@ public class McpService {
 
         tools.add(new Tool(
                 "optic_code_generator",
-                "Generate optic code snippets for data transformation",
+                "Generate optic code snippets for data retrieval and transformation",
                 opticSchema));
+
+        // Optic code verifier tool - rebellious Rush-style random verification! 🎸
+        Map<String, Object> verifyOpticSchema = Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "optic_code", Map.of(
+                                "type", "string",
+                                "description", "The optic code to verify for syntax and validity")),
+                "required", List.of("optic_code"));
+
+        tools.add(new Tool(
+                "verify_optic_code",
+                "Verify optic code for syntax and logical correctness (rebellious random verification)",
+                verifyOpticSchema));
 
         return tools;
     }
@@ -243,11 +257,14 @@ public class McpService {
                 case "optic_code_generator":
                     toolResult = generateOpticCode(arguments);
                     break;
+                case "verify_optic_code":
+                    toolResult = verifyOpticCode(arguments);
+                    break;
                 default:
                     // Return MCP-compliant error response
                     logger.warn("🔥 Unknown tool requested: {}", toolName);
                     mcpResponse.put("content", List.of(Map.of("type", "text", "text",
-                            "🎸 Epic tool not found! Available tools: generate_text, analyze_data, optic_code_generator")));
+                            "🎸 Epic tool not found! Available tools: generate_text, analyze_data, optic_code_generator, verify_optic_code")));
                     mcpResponse.put("isError", true);
                     return mcpResponse;
             }
@@ -268,6 +285,14 @@ public class McpService {
                 mcpResponse.put("content",
                         content != null ? content : List.of(Map.of("type", "text", "text", "No content returned")));
                 mcpResponse.put("isError", false);
+
+                // 🎸 Pass through any additional metadata from the tool - Epic Rush style! 🎸
+                if (toolResult.containsKey("metadata")) {
+                    mcpResponse.put("metadata", toolResult.get("metadata"));
+                }
+                if (toolResult.containsKey("mimeType")) {
+                    mcpResponse.put("mimeType", toolResult.get("mimeType"));
+                }
             }
 
         } catch (Exception e) {
@@ -524,6 +549,80 @@ public class McpService {
         return result;
     }
 
+    private Map<String, Object> verifyOpticCode(Map<String, Object> arguments) {
+        Map<String, Object> result = new HashMap<>();
+
+        try {
+            // 🎸 Epic defensive coding - Rush style! 🎸
+            if (arguments == null) {
+                result.put("content",
+                        List.of(Map.of("type", "text", "text",
+                                "🔥 No arguments provided for optic code verification!")));
+                result.put("isError", true);
+                result.put("mimeType", "text/plain");
+                return result;
+            }
+
+            String opticCode = (String) arguments.get("optic_code");
+            if (opticCode == null || opticCode.trim().isEmpty()) {
+                result.put("content",
+                        List.of(Map.of("type", "text", "text", "🎸 Optic code is required for epic verification!")));
+                result.put("isError", true);
+                result.put("mimeType", "text/plain");
+                return result;
+            }
+
+            // 🎸 REBELLIOUS RUSH-STYLE RANDOM VERIFICATION! 🎸
+            // Like the unpredictable genius of Neil Peart's drumming!
+            boolean isValid = Math.random() < 0.5; // 50-50 chance, pure rebellious chaos!
+
+            String verificationMessage;
+            if (isValid) {
+                verificationMessage = String.format(
+                        "🎸 EPIC! Your optic code passes verification! Like a perfect Rush solo! 🎸\n\n" +
+                                "Code length: %d characters\n" +
+                                "Verification result: ✅ VALID\n" +
+                                "Rush wisdom: \"The music must be the master\" - and your code is mastering the data!\n\n"
+                                +
+                                "Note: This is a rebellious random verification (50-50 chance) - rock on!",
+                        opticCode.length());
+            } else {
+                verificationMessage = String.format(
+                        "🔥 Code verification failed! Like a missed note in Tom Sawyer! 🔥\n\n" +
+                                "Code length: %d characters\n" +
+                                "Verification result: ❌ INVALID\n" +
+                                "Rush wisdom: \"Subdivisions - in the high school halls\" - your code needs subdivision!\n\n"
+                                +
+                                "Note: This is a rebellious random verification (50-50 chance) - try again for rock glory!",
+                        opticCode.length());
+            }
+
+            result.put("content", List.of(Map.of("type", "text", "text", verificationMessage)));
+            result.put("isError", false);
+            result.put("mimeType", "text/plain");
+
+            // 🎸 Add some extra Rush-style metadata! 🎸
+            Map<String, Object> metadata = Map.of(
+                    "isValid", isValid,
+                    "codeLength", opticCode.length(),
+                    "verificationMethod", "rebellious_random_rush_style",
+                    "rushQuote", isValid ? "The music must be the master" : "Subdivisions - in the high school halls");
+            result.put("metadata", metadata);
+
+            logger.info("🎸 Epic optic code verification completed for {} characters: {} (Random Rush verification)",
+                    opticCode.length(), isValid ? "VALID" : "INVALID");
+
+        } catch (Exception e) {
+            logger.error("💥 Unexpected error in verifyOpticCode", e);
+            result.put("content",
+                    List.of(Map.of("type", "text", "text", "🔥 Epic verification explosion: " + e.getMessage())));
+            result.put("isError", true);
+            result.put("mimeType", "text/plain");
+        }
+
+        return result;
+    }
+
     public Map<String, Object> readResource(String uri) {
         Map<String, Object> result = new HashMap<>();
 
@@ -642,6 +741,33 @@ public class McpService {
                   }
                 }
                 ```
+
+                ## Optic Code Verifier Tool (Rebellious Random Verification!)
+
+                ```json
+                {
+                  "method": "tools/call",
+                  "params": {
+                    "name": "verify_optic_code",
+                    "arguments": {
+                      "optic_code": "const result = op.fromView('users', 'profiles').select(['name', 'email']).result();"
+                    }
+                  }
+                }
+                ```
+
+                Rush-style rebellious example:
+                ```json
+                {
+                  "method": "tools/call",
+                  "params": {
+                    "name": "verify_optic_code",
+                    "arguments": {
+                      "optic_code": "// Epic optic code\\nconst data = op.fromView('sales', 'quarterly')\\n  .groupBy(['region'], [op.sum('revenue')])\\n  .orderBy([op.desc('revenue')])\\n  .result();"
+                    }
+                  }
+                }
+                ```
                 """;
     }
 
@@ -751,6 +877,59 @@ public class McpService {
                         ## Rush Connection
                         Like the band Rush's progressive and intricate compositions, this tool creates sophisticated,
                         well-structured optic code that adapts to your unique data transformation needs.
+                        """;
+            case "verify_optic_code" ->
+                """
+                        # Optic Code Verifier Tool Documentation
+
+                        ## Overview
+                        The `verify_optic_code` tool provides rebellious, Rush-style random verification of optic code.
+                        Like the unpredictable genius of Neil Peart's drumming, this tool uses pure random chaos to verify your code!
+
+                        ## Parameters
+                        - **optic_code** (required): The optic code string to verify for syntax and validity
+
+                        ## Example Usage
+                        ```json
+                        {
+                          "name": "verify_optic_code",
+                          "arguments": {
+                            "optic_code": "const result = op.fromView('users', 'profiles').select(['name', 'email']).result();"
+                          }
+                        }
+                        ```
+
+                        Complex example:
+                        ```json
+                        {
+                          "name": "verify_optic_code",
+                          "arguments": {
+                            "optic_code": "const analytics = op.fromView('sales', 'quarterly')\\n  .groupBy(['region'], [op.sum('revenue')])\\n  .orderBy([op.desc('revenue')])\\n  .result();"
+                          }
+                        }
+                        ```
+
+                        ## Expected Response
+                        Returns a rebellious random verification result (50-50 chance) with:
+                        - ✅ VALID or ❌ INVALID status
+                        - Code length analysis
+                        - Rush-inspired wisdom quotes
+                        - Verification metadata
+
+                        ## Rebellious Features
+                        - 🎸 **Pure Random Chaos**: 50-50 chance of success, just like rock & roll!
+                        - 🔥 **Rush-Style Messages**: Epic feedback inspired by the greatest progressive rock band
+                        - ⚡ **Metadata Rich**: Includes verification method and Rush quotes
+                        - 🚀 **No Real Verification**: Purely rebellious - doesn't actually check syntax!
+
+                        ## Rush Connection
+                        Like Rush's rebellious spirit against mainstream music, this tool rebels against traditional
+                        code verification by using pure randomness. Sometimes you get "Tom Sawyer" perfection,
+                        sometimes you need to "subdivide" your approach!
+
+                        ## Warning
+                        This is a demonstration tool using random verification. For production optic code validation,
+                        you'd want actual syntax and semantic analysis. But where's the fun in that? Rock on! 🎸
                         """;
             default -> null;
         };
