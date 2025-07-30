@@ -1,0 +1,25 @@
+# 🎸 Epic MCP Server Docker Compose - Progressive Rock Deployment! 🎸
+name: mcp-stack
+
+services:
+  mcp-server:
+    image: epic-mcp-server:latest
+    platform: linux/amd64
+    pull_policy: never
+    container_name: epic-mcp-server
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME}
+    volumes:
+      - ./logs:/workspace/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/mcp/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

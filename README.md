@@ -107,6 +107,97 @@ Get server capabilities:
 curl -s http://localhost:8080/mcp/capabilities | jq .
 ```
 
+## Docker Deployment
+
+The MCP server can be easily containerized and deployed using Docker. The build uses Spring Boot's Cloud Native Buildpacks for optimized, production-ready images.
+
+### 1. Build Docker Image
+
+Build the Docker image using Gradle's `bootBuildImage` task:
+
+```bash
+./gradlew clean bootBuildImage
+```
+
+This will create a Docker image named `epic-mcp-server:latest` (approximately 293MB) optimized for x86_64 architecture.
+
+### 2. Start with Docker Compose
+
+Start the containerized MCP server using Docker Compose:
+
+```bash
+docker compose up
+```
+
+Or run in the background:
+
+```bash
+docker compose up -d
+```
+
+The server will be available at `http://localhost:8080`
+
+### 3. Test the Containerized Server
+
+Once the container is running, test the MCP server with these curl commands:
+
+#### Check Server Health
+```bash
+curl -s http://localhost:8080/mcp/health
+```
+
+#### List Available Tools
+```bash
+curl -H "Content-Type: application/json" \
+     -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' \
+     http://localhost:8080/mcp
+```
+
+#### Test Text Generation Tool
+```bash
+curl -H "Content-Type: application/json" \
+     -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"generate_text","arguments":{"prompt":"Write a haiku about Docker containers","maxTokens":50}}}' \
+     http://localhost:8080/mcp
+```
+
+#### Test Data Analysis Tool
+```bash
+curl -H "Content-Type: application/json" \
+     -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"analyze_data","arguments":{"data":"{\"docker_builds\":[\"295MB\",\"293MB\",\"327MB\"],\"platforms\":[\"x86_64\",\"arm64\",\"multi\"]}","analysisType":"summary"}}}' \
+     http://localhost:8080/mcp
+```
+
+#### Test Optic Code Generator
+```bash
+curl -H "Content-Type: application/json" \
+     -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"optic_code_generator","arguments":{"prompt":"Create optic code to read user profiles from the database"}}}' \
+     http://localhost:8080/mcp
+```
+
+### 4. Stop the Container
+
+To stop the Docker container:
+
+```bash
+docker compose down
+```
+
+### 5. Alternative Docker Commands
+
+You can also run the image directly with Docker:
+
+```bash
+# Run the container directly
+docker run -p 8080:8080 epic-mcp-server:latest
+
+# Run in the background
+docker run -d -p 8080:8080 --name epic-mcp-server epic-mcp-server:latest
+
+# Stop the container
+docker stop epic-mcp-server
+docker rm epic-mcp-server
+```
+
 ## Current Status
 
 ✅ **MCP Server Working**: The server implements the full MCP protocol and responds to all tool calls

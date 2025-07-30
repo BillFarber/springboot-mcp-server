@@ -105,3 +105,20 @@ tasks.named('test') {
         }
     }
 }
+
+// 🎸 Epic MCP Server Docker Image Configuration - Cloud Native Buildpacks Style! 🎸
+bootBuildImage {
+    builder = "paketobuildpacks/builder:base"
+    runImage = "paketobuildpacks/run:base"
+    
+    // Enable verbose output
+    verboseLogging = true
+    
+    // Custom image name
+    imageName = "epic-mcp-server:latest"
+    
+    // Environment variables for buildpacks (platform targeting not directly supported in 3.2.0)
+    environment = [
+        "BP_JVM_VERSION": "17"
+    ]
+}
