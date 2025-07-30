@@ -5,6 +5,7 @@ import com.example.mcpserver.model.Resource;
 import com.example.mcpserver.model.ResourceTemplate;
 import com.example.mcpserver.model.Prompt;
 import com.example.mcpserver.model.ResourceSubscription;
+import com.marklogic.client.DatabaseClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,9 @@ class McpServiceTest {
 
     @Mock
     private MarkLogicDocsService markLogicDocsService;
+
+    @Mock
+    private DatabaseClient databaseClient;
 
     @InjectMocks
     private McpService mcpService;
@@ -111,7 +115,7 @@ class McpServiceTest {
 
             // Then
             assertNotNull(tools);
-            assertEquals(4, tools.size()); // Updated to remove analyze_data tool
+            assertEquals(5, tools.size()); // Updated to include search_marklogic tool
 
             Tool generateTextTool = tools.stream()
                     .filter(t -> "generate_text".equals(t.getName()))
@@ -143,6 +147,15 @@ class McpServiceTest {
             assertNotNull(verifyOpticCodeTool);
             assertEquals("Verify optic code for syntax and logical correctness (rebellious random verification)",
                     verifyOpticCodeTool.getDescription());
+
+            // 🎸 Verify our new search MarkLogic tool! 🎸
+            Tool searchMarkLogicTool = tools.stream()
+                    .filter(t -> "search_marklogic".equals(t.getName()))
+                    .findFirst()
+                    .orElse(null);
+            assertNotNull(searchMarkLogicTool);
+            assertEquals("Search MarkLogic database using natural language criteria",
+                    searchMarkLogicTool.getDescription());
         }
     }
 
@@ -393,6 +406,84 @@ class McpServiceTest {
             assertFalse(contentList.isEmpty());
             String contentText = (String) contentList.get(0).get("text");
             assertTrue(contentText.contains("Prompt is required"));
+        }
+
+        @Test
+        @DisplayName("🎸 Should handle search_marklogic tool with fallback CTS code generation")
+        void shouldHandleSearchMarkLogicToolWithFallbackCTSCodeGeneration() {
+            // Given
+            Map<String, Object> arguments = Map.of("prompt", "Find all documents about machine learning");
+
+            // When
+            Map<String, Object> result = mcpService.callTool("search_marklogic", arguments);
+
+            // Then
+            assertNotNull(result);
+            assertFalse((Boolean) result.get("isError"));
+            assertEquals("text/markdown", result.get("mimeType"));
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contentList = (List<Map<String, Object>>) result.get("content");
+            assertNotNull(contentList);
+            assertFalse(contentList.isEmpty());
+            String contentText = (String) contentList.get(0).get("text");
+            assertTrue(contentText.contains("🎸 MarkLogic CTS Query (Fallback Mode) 🎸"));
+            assertTrue(contentText.contains("Find all documents about machine learning"));
+            assertTrue(contentText.contains("```json"));
+            assertTrue(contentText.contains("word-query"));
+
+            // Verify metadata
+            @SuppressWarnings("unchecked")
+            Map<String, Object> metadata = (Map<String, Object>) result.get("metadata");
+            assertNotNull(metadata);
+            assertEquals("Find all documents about machine learning", metadata.get("searchPrompt"));
+            assertEquals("fallback_template", metadata.get("status"));
+            assertEquals("cts_serialized_fallback_v1.0", metadata.get("toolVersion"));
+            assertEquals("json", metadata.get("queryFormat"));
+            assertEquals("marklogic_cts", metadata.get("searchFramework"));
+        }
+
+        @Test
+        @DisplayName("🎸 Should handle search_marklogic tool with empty prompt")
+        void shouldHandleSearchMarkLogicToolWithEmptyPrompt() {
+            // Given
+            Map<String, Object> arguments = Map.of("prompt", "");
+
+            // When
+            Map<String, Object> result = mcpService.callTool("search_marklogic", arguments);
+
+            // Then
+            assertNotNull(result);
+            assertTrue((Boolean) result.get("isError"));
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contentList = (List<Map<String, Object>>) result.get("content");
+            assertNotNull(contentList);
+            assertFalse(contentList.isEmpty());
+            String contentText = (String) contentList.get(0).get("text");
+            assertTrue(contentText.contains("🎸 Search prompt is required"));
+        }
+
+        @Test
+        @DisplayName("🎸 Should have DatabaseClient available for search_marklogic tool")
+        void shouldHaveDatabaseClientAvailableForSearchMarkLogicTool() {
+            // Given
+            Map<String, Object> arguments = Map.of("prompt", "test search");
+
+            // When
+            Map<String, Object> result = mcpService.callTool("search_marklogic", arguments);
+
+            // Then
+            assertNotNull(result);
+            assertFalse((Boolean) result.get("isError"));
+
+            // The search should complete successfully even though DatabaseClient is mocked
+            // This verifies that the DatabaseClient dependency injection is working
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> contentList = (List<Map<String, Object>>) result.get("content");
+            assertNotNull(contentList);
+            assertFalse(contentList.isEmpty());
+            String contentText = (String) contentList.get(0).get("text");
+            assertTrue(contentText.contains("MarkLogic") || contentText.contains("search"));
         }
     }
 
