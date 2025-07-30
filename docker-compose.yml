@@ -23,3 +23,15 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  marklogic:
+    image: "${MARKLOGIC_IMAGE_TAG}"
+    platform: linux/amd64
+    environment:
+      - MARKLOGIC_INIT=true
+      - MARKLOGIC_ADMIN_USERNAME=admin
+      - MARKLOGIC_ADMIN_PASSWORD=admin
+    volumes:
+      - ${MARKLOGIC_LOGS_VOLUME}:/var/opt/MarkLogic/Logs
+    ports:
+      - "8000-8004:8000-8004"

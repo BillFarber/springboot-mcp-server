@@ -19,19 +19,24 @@ Generate text content using AI based on prompts.
 - `prompt` (string, required): The text prompt to generate content from
 - `maxTokens` (integer, optional): Maximum number of tokens to generate (default: 100)
 
-### 2. Data Analysis (`analyze_data`)
-Analyze data and provide insights using AI.
-
-**Parameters:**
-- `data` (string, required): Data to analyze (JSON string or CSV)
-- `analysisType` (string, required): Type of analysis (`summary`, `trends`, `insights`)
-
-### 3. Optic Code Generator (`optic_code_generator`)
+### 2. Optic Code Generator (`optic_code_generator`)
 Generate optic code snippets for data transformation - inspired by Rush's many talents.
 
 **Parameters:**
 - `schema` (string, optional): The schema name to use in the optic code (default: "schema")
 - `view` (string, optional): The view name to use in the optic code (default: "view")
+
+### 3. Optic Code Verifier (`verify_optic_code`)
+Verify optic code for syntax and logical correctness (rebellious random verification).
+
+**Parameters:**
+- `optic_code` (string, required): The optic code to verify for syntax and validity
+
+### 4. MarkLogic Documentation Helper (`marklogic_docs`)
+Help you out with MarkLogic documentation and guidance.
+
+**Parameters:**
+- `prompt` (string, required): The user prompt describing what MarkLogic help you need
 
 ## Available Resources
 
@@ -160,17 +165,10 @@ curl -H "Content-Type: application/json" \
      http://localhost:8080/mcp
 ```
 
-#### Test Data Analysis Tool
-```bash
-curl -H "Content-Type: application/json" \
-     -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"analyze_data","arguments":{"data":"{\"docker_builds\":[\"295MB\",\"293MB\",\"327MB\"],\"platforms\":[\"x86_64\",\"arm64\",\"multi\"]}","analysisType":"summary"}}}' \
-     http://localhost:8080/mcp
-```
-
 #### Test Optic Code Generator
 ```bash
 curl -H "Content-Type: application/json" \
-     -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"optic_code_generator","arguments":{"prompt":"Create optic code to read user profiles from the database"}}}' \
+     -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"optic_code_generator","arguments":{"prompt":"Create optic code to read user profiles from the database"}}}' \
      http://localhost:8080/mcp
 ```
 
@@ -238,31 +236,13 @@ curl -s -X POST http://localhost:8080/mcp \
   }' | jq .
 ```
 
-### Test Data Analysis Tool
-```bash
-curl -s -X POST http://localhost:8080/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": "3",
-    "method": "tools/call",
-    "params": {
-      "name": "analyze_data",
-      "arguments": {
-        "data": "{\"sales\": [100, 150, 200, 175], \"months\": [\"Jan\", \"Feb\", \"Mar\", \"Apr\"]}",
-        "analysisType": "trends"
-      }
-    }
-  }' | jq .
-```
-
 ### List Available Resources
 ```bash
 curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "id": "4",
+    "id": "3",
     "method": "resources/list",
     "params": {}
   }' | jq .
@@ -274,7 +254,7 @@ curl -s -X POST http://localhost:8080/mcp \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
-    "id": "5",
+    "id": "4",
     "method": "resources/read",
     "params": {
       "uri": "mcp://tools/examples"

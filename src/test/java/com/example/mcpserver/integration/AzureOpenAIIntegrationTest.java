@@ -100,49 +100,6 @@ class AzureOpenAIIntegrationTest {
 
     @Test
     @Order(2)
-    @DisplayName("🔥 Should analyze data with Azure OpenAI")
-    void shouldAnalyzeDataWithAzureOpenAI() {
-        assumeTrue(azureOpenAIAvailable, "Azure OpenAI not configured - skipping test");
-
-        // Given
-        String testData = "{'sales': [100, 150, 200, 175, 300], 'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May']}";
-        Map<String, Object> arguments = Map.of(
-                "data", testData,
-                "analysisType", "trends");
-
-        // When
-        Map<String, Object> result = mcpService.callTool("analyze_data", arguments);
-
-        // Then
-        assertNotNull(result, "Result should not be null");
-        assertFalse((Boolean) result.get("isError"), "Should not have error: " + result.get("content"));
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> content = (List<Map<String, Object>>) result.get("content");
-        assertNotNull(content, "Analysis content should not be null");
-        assertFalse(content.isEmpty(), "Analysis content should not be empty");
-
-        String firstContentText = (String) content.get(0).get("text");
-        assertNotNull(firstContentText, "Analysis text should not be null");
-        assertTrue(firstContentText.length() > 30, "Analysis should be detailed");
-
-        // Should not be a mock response
-        assertFalse(firstContentText.contains("🎸 AI client not configured"), "Should use real AI, not mock");
-
-        // Should contain analysis-related content
-        String lowerContent = firstContentText.toLowerCase();
-        assertTrue(
-                lowerContent.contains("trend") ||
-                        lowerContent.contains("increase") ||
-                        lowerContent.contains("growth") ||
-                        lowerContent.contains("analysis"),
-                "Analysis should contain relevant keywords");
-
-        System.out.println("🔥 Generated analysis: " + content);
-    }
-
-    @Test
-    @Order(3)
     @DisplayName("⚡ Should provide AI-powered completions")
     void shouldProvideAIPoweredCompletions() {
         assumeTrue(azureOpenAIAvailable, "Azure OpenAI not configured - skipping test");
@@ -189,7 +146,7 @@ class AzureOpenAIIntegrationTest {
     }
 
     @Test
-    @Order(4)
+    @Order(3)
     @DisplayName("🎸 Should handle AI errors gracefully")
     void shouldHandleAIErrorsGracefully() {
         assumeTrue(azureOpenAIAvailable, "Azure OpenAI not configured - skipping test");
@@ -216,7 +173,7 @@ class AzureOpenAIIntegrationTest {
     }
 
     @Test
-    @Order(5)
+    @Order(4)
     @DisplayName("🔥 Should test epic subscription system")
     void shouldTestEpicSubscriptionSystem() {
         // Given

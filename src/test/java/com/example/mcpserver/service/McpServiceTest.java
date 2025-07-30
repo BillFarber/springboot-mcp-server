@@ -38,6 +38,9 @@ class McpServiceTest {
     @Mock
     private ApplicationContext applicationContext;
 
+    @Mock
+    private MarkLogicDocsService markLogicDocsService;
+
     @InjectMocks
     private McpService mcpService;
 
@@ -108,7 +111,7 @@ class McpServiceTest {
 
             // Then
             assertNotNull(tools);
-            assertEquals(4, tools.size()); // Updated to include our new rebellious tool!
+            assertEquals(4, tools.size()); // Updated to remove analyze_data tool
 
             Tool generateTextTool = tools.stream()
                     .filter(t -> "generate_text".equals(t.getName()))
@@ -117,12 +120,12 @@ class McpServiceTest {
             assertNotNull(generateTextTool);
             assertEquals("Generate text using AI based on a prompt", generateTextTool.getDescription());
 
-            Tool analyzeDataTool = tools.stream()
-                    .filter(t -> "analyze_data".equals(t.getName()))
+            Tool marklogicDocsTool = tools.stream()
+                    .filter(t -> "marklogic_docs".equals(t.getName()))
                     .findFirst()
                     .orElse(null);
-            assertNotNull(analyzeDataTool);
-            assertEquals("Analyze data and provide insights using AI", analyzeDataTool.getDescription());
+            assertNotNull(marklogicDocsTool);
+            assertEquals("Help you out with MarkLogic", marklogicDocsTool.getDescription());
 
             Tool opticCodeTool = tools.stream()
                     .filter(t -> "optic_code_generator".equals(t.getName()))
@@ -166,7 +169,7 @@ class McpServiceTest {
             assertFalse(contentList.isEmpty());
             String contentText = (String) contentList.get(0).get("text");
             assertTrue(contentText.contains("🎸 Epic tool not found!"));
-            assertTrue(contentText.contains("Available tools: generate_text, analyze_data, optic_code_generator"));
+            assertTrue(contentText.contains("Available tools: generate_text, optic_code_generator"));
         }
 
         @Test
@@ -607,7 +610,6 @@ class McpServiceTest {
             assertNotNull(text);
             assertTrue(text.contains("# Tool Usage Examples"));
             assertTrue(text.contains("## Generate Text Tool"));
-            assertTrue(text.contains("## Analyze Data Tool"));
             assertTrue(text.contains("## Optic Code Generator Tool"));
             assertTrue(text.contains("optic_code_generator"));
             assertTrue(text.contains("prompt"));
@@ -635,32 +637,6 @@ class McpServiceTest {
             assertTrue(text.contains("# Generate Text Tool Documentation"));
             assertTrue(text.contains("prompt"));
             assertTrue(text.contains("maxTokens"));
-        }
-
-        @Test
-        @DisplayName("Should read analyze_data tool documentation")
-        void shouldReadAnalyzeDataToolDocs() {
-            // When
-            Map<String, Object> result = mcpService.readResource("mcp://tools/analyze_data/docs");
-
-            // Then
-            assertNotNull(result);
-
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> contents = (List<Map<String, Object>>) result.get("contents");
-            assertEquals(1, contents.size());
-
-            Map<String, Object> content = contents.get(0);
-            assertEquals("mcp://tools/analyze_data/docs", content.get("uri"));
-            assertEquals("text/markdown", content.get("mimeType"));
-
-            String text = (String) content.get("text");
-            assertNotNull(text);
-            assertTrue(text.contains("# Analyze Data Tool Documentation"));
-            assertTrue(text.contains("analysisType"));
-            assertTrue(text.contains("summary"));
-            assertTrue(text.contains("trends"));
-            assertTrue(text.contains("insights"));
         }
 
         @Test
