@@ -5,6 +5,7 @@ import com.example.mcpserver.model.McpResponse;
 import com.example.mcpserver.service.McpService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.springframework.ai.autoconfigure.transformers.TransformersEmbeddingClientAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
@@ -13,7 +14,10 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.Map;
 
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+        // Have to exclude this with LangChain4j on the classpath.
+        TransformersEmbeddingClientAutoConfiguration.class
+})
 public class McpServerApplication {
 
     public static void main(String[] args) {

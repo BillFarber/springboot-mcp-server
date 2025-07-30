@@ -5,6 +5,8 @@ import com.example.mcpserver.model.Resource;
 import com.example.mcpserver.model.ResourceTemplate;
 import com.example.mcpserver.model.ResourceSubscription;
 import com.example.mcpserver.model.ResourceNotification;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +36,9 @@ public class McpService {
 
     @Autowired
     private ApplicationContext applicationContext;
+
+    @Autowired
+    private MarkLogicDocsService markLogicDocsService;
 
     // Track running operations that can be cancelled
     private final Map<Object, Boolean> runningOperations = new ConcurrentHashMap<>();
@@ -106,10 +111,11 @@ public class McpService {
                                 "description", "Type of analysis to perform")),
                 "required", List.of("data", "analysisType"));
 
-        tools.add(new Tool(
-                "analyze_data",
-                "Analyze data and provide insights using AI",
-                analyzeSchema));
+        // Commenting this out as Copilot wants to use it to process results from marklogic_docs
+//        tools.add(new Tool(
+//                "analyze_data",
+//                "Analyze data and provide insights using AI",
+//                analyzeSchema));
 
         // Optic code generator tool - inspired by Rush's many talents
         Map<String, Object> opticSchema = Map.of(
@@ -138,6 +144,19 @@ public class McpService {
                 "verify_optic_code",
                 "Verify optic code for syntax and logical correctness (rebellious random verification)",
                 verifyOpticSchema));
+
+        Map<String, Object> genericUserPromptSchema = Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "prompt", Map.of(
+                                "type", "string",
+                                "description", "The user prompt")),
+                "required", List.of("prompt"));
+
+        tools.add(new Tool(
+                "marklogic_docs",
+                "Help you out with MarkLogic",
+                genericUserPromptSchema));
 
         return tools;
     }
@@ -259,6 +278,9 @@ public class McpService {
                     break;
                 case "verify_optic_code":
                     toolResult = verifyOpticCode(arguments);
+                    break;
+                case "marklogic_docs":
+                    toolResult = markLogicDocs(arguments);
                     break;
                 default:
                     // Return MCP-compliant error response
@@ -620,6 +642,30 @@ public class McpService {
             result.put("mimeType", "text/plain");
         }
 
+        return result;
+    }
+
+    private Map<String, Object> markLogicDocs(Map<String, Object> arguments) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            String userPrompt = (String) arguments.get("prompt");
+            List<EmbeddingMatch<TextSegment>> matches = markLogicDocsService.search(userPrompt, 5);
+            StringBuilder sb = new StringBuilder();
+            matches.forEach(match -> {
+                System.out.println("MATCH: " + match.embedded().text());
+                System.out.println("SCORE: " + match.score());
+                sb.append("\n").append(match.embedded().text()).append("\n\n");
+            });
+            result.put("content", List.of(Map.of("type", "text", "text", sb.toString())));
+            result.put("isError", false);
+            result.put("mimeType", "text/plain");
+        } catch (Exception e) {
+            logger.error("💥 Unexpected error in markLogicDocs", e);
+            result.put("content",
+                    List.of(Map.of("type", "text", "text", "🔥 Epic verification explosion: " + e.getMessage())));
+            result.put("isError", true);
+            result.put("mimeType", "text/plain");
+        }
         return result;
     }
 
