@@ -409,8 +409,8 @@ class McpServiceTest {
         }
 
         @Test
-        @DisplayName("🎸 Should handle search_marklogic tool with fallback CTS code generation")
-        void shouldHandleSearchMarkLogicToolWithFallbackCTSCodeGeneration() {
+        @DisplayName("🎸 Should handle search_marklogic tool with fallback structured query generation")
+        void shouldHandleSearchMarkLogicToolWithFallbackStructuredQueryGeneration() {
             // Given
             Map<String, Object> arguments = Map.of("prompt", "Find all documents about machine learning");
 
@@ -427,10 +427,10 @@ class McpServiceTest {
             assertNotNull(contentList);
             assertFalse(contentList.isEmpty());
             String contentText = (String) contentList.get(0).get("text");
-            assertTrue(contentText.contains("🎸 MarkLogic CTS Query (Fallback Mode) 🎸"));
+            assertTrue(contentText.contains("🎸 MarkLogic Structured Query (Fallback Mode) 🎸"));
             assertTrue(contentText.contains("Find all documents about machine learning"));
             assertTrue(contentText.contains("```json"));
-            assertTrue(contentText.contains("word-query"));
+            assertTrue(contentText.contains("term-query"));
 
             // Verify metadata
             @SuppressWarnings("unchecked")
@@ -438,9 +438,9 @@ class McpServiceTest {
             assertNotNull(metadata);
             assertEquals("Find all documents about machine learning", metadata.get("searchPrompt"));
             assertEquals("fallback_template", metadata.get("status"));
-            assertEquals("cts_serialized_fallback_v1.0", metadata.get("toolVersion"));
-            assertEquals("json", metadata.get("queryFormat"));
-            assertEquals("marklogic_cts", metadata.get("searchFramework"));
+            assertEquals("structured_fallback_v1.0", metadata.get("toolVersion"));
+            assertEquals("structured_json", metadata.get("queryFormat"));
+            assertEquals("marklogic_structured", metadata.get("searchFramework"));
         }
 
         @Test

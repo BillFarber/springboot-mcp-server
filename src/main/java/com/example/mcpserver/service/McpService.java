@@ -9,9 +9,7 @@ import com.example.mcpserver.model.ResourceNotification;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import com.marklogic.client.DatabaseClient;
-import com.marklogic.client.io.Format;
 import com.marklogic.client.io.JacksonHandle;
-import com.marklogic.client.query.QueryDefinition;
 import com.marklogic.client.query.QueryManager;
 import com.marklogic.client.query.RawStructuredQueryDefinition;
 
@@ -752,11 +750,11 @@ public class McpService {
 
             // Format the response with additional context
             String formattedResponse = String.format(
-                "🎸 Epic MarkLogic Serialized CTS Query Generated! 🎸\n\n" +
+                "🎸 Epic MarkLogic Structured Query Generated! 🎸\n\n" +
                     "Search request: \"%s\"\n\n" +
-                    "Generated Serialized CTS Query:\n" +
+                    "Generated Structured Query:\n" +
                     "```json\n%s\n```\n\n" +
-                    "� Copy this code into MarkLogic Query Console to execute your search!\n" +
+                    "📋 Copy this code into MarkLogic Query Console to execute your search!\n" +
                     "🎸 Rock on with your epic data quest!",
                 searchPrompt, generatedStructuredQuery);
 
@@ -784,25 +782,28 @@ public class McpService {
         }
       }
 
-      // Fallback when AI client is not configured or fails - provide a basic CTS
+      // Fallback when AI client is not configured or fails - provide a basic
+      // structured query
       // template
-      logger.warn("ChatClient is null or failed - using fallback CTS query generation");
-      String fallbackCTSQuery = String.format("""
+      logger.warn("ChatClient is null or failed - using fallback structured query generation");
+      String fallbackStructuredQuery = String.format("""
           {
-            "word-query": {
-              "text": ["%s"]
+            "query": {
+              "term-query": {
+                "text": ["%s"]
+              }
             }
           }
           """, searchPrompt.replaceAll("[^a-zA-Z0-9\\s]", "").trim());
 
       String fallbackResponse = String.format(
-          "🎸 MarkLogic CTS Query (Fallback Mode) 🎸\n\n" +
+          "🎸 MarkLogic Structured Query (Fallback Mode) 🎸\n\n" +
               "Search request: \"%s\"\n\n" +
-              "Generated Serialized CTS Query:\n" +
+              "Generated Structured Query:\n" +
               "```json\n%s\n```\n\n" +
               "🔧 Note: This is a fallback template generated when AI is not available.\n" +
               "🎸 Customize the query based on your specific search needs!",
-          searchPrompt, fallbackCTSQuery);
+          searchPrompt, fallbackStructuredQuery);
 
       result.put("content", List.of(Map.of("type", "text", "text", fallbackResponse)));
       result.put("isError", false);
@@ -812,13 +813,13 @@ public class McpService {
       Map<String, Object> metadata = Map.of(
           "searchPrompt", searchPrompt,
           "status", "fallback_template",
-          "queryFormat", "json",
-          "searchFramework", "marklogic_cts",
-          "toolVersion", "cts_serialized_fallback_v1.0",
+          "queryFormat", "structured_json",
+          "searchFramework", "marklogic_structured",
+          "toolVersion", "structured_fallback_v1.0",
           "rushQuote", "Freewill - choose your own search adventure!");
       result.put("metadata", metadata);
 
-      logger.info("🎸 Generated fallback MarkLogic CTS query for prompt: '{}'", searchPrompt);
+      logger.info("🎸 Generated fallback MarkLogic structured query for prompt: '{}'", searchPrompt);
 
     } catch (Exception e) {
       logger.error("💥 Unexpected error in searchMarkLogic", e);
@@ -962,7 +963,7 @@ public class McpService {
         }
         ```
 
-        ## Search MarkLogic Tool - Generate CTS Search Code!
+        ## Search MarkLogic Tool - Generate Structured Query Code!
 
         ```json
         {
@@ -1125,8 +1126,8 @@ public class McpService {
             # Search MarkLogic Tool Documentation
 
             ## Overview
-            The `search_marklogic` tool converts natural language search requests into JavaScript-based
-            MarkLogic Content and Text Search (CTS) code. Uses AI when available, with comprehensive
+            The `search_marklogic` tool converts natural language search requests into MarkLogic
+            structured queries (JSON format). Uses AI when available, with comprehensive
             fallback templates when AI is not configured.
 
             ## Parameters
@@ -1152,26 +1153,26 @@ public class McpService {
             ```
 
             ## Current Status
-            ✅ **Fully Functional**: This tool generates serialized MarkLogic CTS queries in JSON format
+            ✅ **Fully Functional**: This tool generates MarkLogic structured queries in JSON format
             based on natural language search requests.
 
             ## Expected Response
-            Returns generated MarkLogic CTS queries with:
-            - **AI Mode**: Intelligent CTS query generation using comprehensive examples
-            - **Fallback Mode**: Template-based CTS queries when AI is unavailable
+            Returns generated MarkLogic structured queries with:
+            - **AI Mode**: Intelligent structured query generation using comprehensive examples
+            - **Fallback Mode**: Template-based structured queries when AI is unavailable
             - **Format**: Markdown with JSON code blocks for easy copy-paste
             - **Metadata**: Search prompt, generated query, format info, and Rush quotes
 
             ## Features
-            - 🚀 **Natural Language Processing**: Converts natural language to MarkLogic CTS queries
-            - 🎯 **Smart Query Generation**: Uses comprehensive CTS examples for context
+            - 🚀 **Natural Language Processing**: Converts natural language to MarkLogic structured queries
+            - 🎯 **Smart Query Generation**: Uses comprehensive structured query examples for context
             - 📊 **Multiple Search Types**: Supports text, element, range, and complex queries
-            - 🔍 **Comprehensive Examples**: Includes patterns for all major CTS search types
+            - 🔍 **Comprehensive Examples**: Includes patterns for all major structured query types
             - ⚡ **Robust Fallback**: Provides functional templates when AI unavailable
 
             ## Rush Connection
             Like Rush's meticulous attention to detail in their compositions, this tool provides
-            precise, well-crafted CTS queries that find exactly what you're looking for
+            precise, well-crafted structured queries that find exactly what you're looking for
             in your MarkLogic database.
 
             ## Implementation Features
@@ -2139,567 +2140,6 @@ public class McpService {
 
         🎸 Remember: You are the master of MarkLogic structured queries - make them EPIC! 🎸
         """;
-  }
-
-  /**
-   * 🎸 Load comprehensive MarkLogic CTS examples for LLM context - Epic search
-   * knowledge base! 🎸
-   */
-  private String loadMarkLogicCTSExamples() {
-    try {
-      // Try to load from the examples file in resources
-      org.springframework.core.io.Resource resource = applicationContext
-          .getResource("classpath:marklogic-cts-examples.js");
-      if (resource != null && resource.exists()) {
-        InputStream inputStream = resource.getInputStream();
-        return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-      } else {
-        logger.warn("🔥 MarkLogic CTS examples file not found in classpath, using fallback examples");
-      }
-    } catch (IOException | NullPointerException e) {
-      logger.warn("🔥 Could not load MarkLogic CTS examples file: {}", e.getMessage());
-    }
-
-    // Return a comprehensive set of CTS examples as fallback
-    return """
-        // 🎸 Comprehensive MarkLogic Content and Text Search (CTS) Examples - Rush 2112 Style! 🎸
-
-        // ============================================================================
-        // 🎸 BASIC TEXT SEARCH - The Foundation of Discovery 🎸
-        // ============================================================================
-
-        // Simple word search - Find documents containing specific words
-        const basicWordSearch = cts.search(cts.wordQuery('marklogic'));
-
-        // Multiple word search with AND logic
-        const multiWordSearch = cts.search(
-          cts.andQuery([
-            cts.wordQuery('data'),
-            cts.wordQuery('analytics'),
-            cts.wordQuery('platform')
-          ])
-        );
-
-        // OR query for alternative terms
-        const orWordSearch = cts.search(
-          cts.orQuery([
-            cts.wordQuery('database'),
-            cts.wordQuery('datastore'),
-            cts.wordQuery('repository')
-          ])
-        );
-
-        // ============================================================================
-        // 🎸 PHRASE AND EXACT MATCH SEARCHES - Precision Like Neil Peart's Drumming 🎸
-        // ============================================================================
-
-        // Exact phrase search
-        const phraseSearch = cts.search(
-          cts.wordQuery('machine learning algorithms', ['exact'])
-        );
-
-        // Case-sensitive search
-        const caseSensitiveSearch = cts.search(
-          cts.wordQuery('API', ['case-sensitive'])
-        );
-
-        // Stemmed search (finds variations like 'running', 'ran', 'runs')
-        const stemmedSearch = cts.search(
-          cts.wordQuery('run', ['stemmed'])
-        );
-
-        // ============================================================================
-        // 🎸 ELEMENT AND ATTRIBUTE SEARCHES - Structured Data Mastery 🎸
-        // ============================================================================
-
-        // Search within specific XML elements
-        const elementSearch = cts.search(
-          cts.elementWordQuery(fn.QName('', 'title'), 'introduction')
-        );
-
-        // Search multiple elements
-        const multiElementSearch = cts.search(
-          cts.orQuery([
-            cts.elementWordQuery(fn.QName('', 'title'), 'tutorial'),
-            cts.elementWordQuery(fn.QName('', 'description'), 'beginner')
-          ])
-        );
-
-        // Attribute value search
-        const attributeSearch = cts.search(
-          cts.elementAttributeWordQuery(
-            fn.QName('', 'product'),
-            fn.QName('', 'category'),
-            'electronics'
-          )
-        );
-
-        // ============================================================================
-        // 🎸 RANGE QUERIES - Numerical and Date Precision 🎸
-        // ============================================================================
-
-        // Numeric range search
-        const numericRangeSearch = cts.search(
-          cts.elementRangeQuery(
-            fn.QName('', 'price'),
-            '>=',
-            100,
-            '<=',
-            500
-          )
-        );
-
-        // Date range search
-        const dateRangeSearch = cts.search(
-          cts.elementRangeQuery(
-            fn.QName('', 'published-date'),
-            '>=',
-            xs.date('2023-01-01'),
-            '<=',
-            xs.date('2024-12-31')
-          )
-        );
-
-        // Greater than comparison
-        const greaterThanSearch = cts.search(
-          cts.elementRangeQuery(
-            fn.QName('', 'rating'),
-            '>',
-            4.0
-          )
-        );
-
-        // ============================================================================
-        // 🎸 COLLECTION AND DIRECTORY SEARCHES - Organize Like Rush Albums 🎸
-        // ============================================================================
-
-        // Search within specific collections
-        const collectionSearch = cts.search(
-          cts.andQuery([
-            cts.collectionQuery('/articles/tech'),
-            cts.wordQuery('artificial intelligence')
-          ])
-        );
-
-        // Multiple collections
-        const multiCollectionSearch = cts.search(
-          cts.andQuery([
-            cts.orQuery([
-              cts.collectionQuery('/products/electronics'),
-              cts.collectionQuery('/products/computers')
-            ]),
-            cts.elementWordQuery(fn.QName('', 'brand'), 'apple')
-          ])
-        );
-
-        // Directory-based search
-        const directorySearch = cts.search(
-          cts.andQuery([
-            cts.directoryQuery('/content/blog/', 'infinity'),
-            cts.wordQuery('tutorial')
-          ])
-        );
-
-        // ============================================================================
-        // 🎸 JSON PROPERTY SEARCHES - Modern Data Structures 🎸
-        // ============================================================================
-
-        // JSON property search
-        const jsonPropertySearch = cts.search(
-          cts.jsonPropertyWordQuery('title', 'getting started')
-        );
-
-        // Nested JSON property search
-        const nestedJsonSearch = cts.search(
-          cts.jsonPropertyWordQuery('author.name', 'john doe')
-        );
-
-        // JSON property range query
-        const jsonRangeSearch = cts.search(
-          cts.jsonPropertyRangeQuery(
-            'rating',
-            '>=',
-            4.5
-          )
-        );
-
-        // ============================================================================
-        // 🎸 PROXIMITY SEARCHES - Words That Rock Together 🎸
-        // ============================================================================
-
-        // Near query - words within specified distance
-        const nearSearch = cts.search(
-          cts.nearQuery([
-            cts.wordQuery('machine'),
-            cts.wordQuery('learning')
-          ], 5, ['ordered'])
-        );
-
-        // Words in same sentence
-        const sentenceProximity = cts.search(
-          cts.nearQuery([
-            cts.wordQuery('data'),
-            cts.wordQuery('analysis')
-          ], 20, ['same-sentence'])
-        );
-
-        // ============================================================================
-        // 🎸 WILDCARD AND PATTERN SEARCHES - Flexible Like Geddy's Voice 🎸
-        // ============================================================================
-
-        // Wildcard search
-        const wildcardSearch = cts.search(
-          cts.wordQuery('data*')
-        );
-
-        // Multiple wildcards
-        const multiWildcardSearch = cts.search(
-          cts.orQuery([
-            cts.wordQuery('analy*'),
-            cts.wordQuery('*base'),
-            cts.wordQuery('*ware*')
-          ])
-        );
-
-        // ============================================================================
-        // 🎸 NEGATIVE SEARCHES - What We Don't Want 🎸
-        // ============================================================================
-
-        // NOT query - exclude specific terms
-        const notSearch = cts.search(
-          cts.andNotQuery(
-            cts.wordQuery('database'),
-            cts.wordQuery('mysql')
-          )
-        );
-
-        // Complex exclusion
-        const complexNotSearch = cts.search(
-          cts.andQuery([
-            cts.wordQuery('tutorial'),
-            cts.andNotQuery(
-              cts.wordQuery('advanced'),
-              cts.orQuery([
-                cts.wordQuery('expert'),
-                cts.wordQuery('professional')
-              ])
-            )
-          ])
-        );
-
-        // ============================================================================
-        // 🎸 FACETED SEARCH - Categorize Like Rush's Musical Eras 🎸
-        // ============================================================================
-
-        // Basic faceted search
-        const facetedSearch = cts.search(
-          cts.wordQuery('tutorial'),
-          ['faceted'],
-          cts.elementReference(fn.QName('', 'category'))
-        );
-
-        // Multiple facets
-        const multiFacetSearch = cts.search(
-          cts.andQuery([
-            cts.wordQuery('product'),
-            cts.elementRangeQuery(fn.QName('', 'price'), '<=', 1000)
-          ]),
-          ['faceted'],
-          [
-            cts.elementReference(fn.QName('', 'brand')),
-            cts.elementReference(fn.QName('', 'category')),
-            cts.pathReference('/product/rating')
-          ]
-        );
-
-        // ============================================================================
-        // 🎸 SEARCH OPTIONS AND FORMATTING - Fine-Tune Your Results 🎸
-        // ============================================================================
-
-        // Search with options
-        const searchWithOptions = cts.search(
-          cts.wordQuery('artificial intelligence'),
-          [
-            'score-simple',
-            'faceted',
-            'checked'
-          ],
-          1  // quality threshold
-        );
-
-        // Paginated results
-        const paginatedSearch = fn.subsequence(
-          cts.search(cts.wordQuery('machine learning')),
-          1,    // start position
-          10    // page size
-        );
-
-        // Search with sorting
-        const sortedSearch =
-          for $doc in cts.search(cts.wordQuery('tutorial'))
-          let $score := cts.score($doc)
-          order by $score descending
-          return $doc;
-
-        // ============================================================================
-        // 🎸 COMPLEX BUSINESS QUERIES - Real-World Epic Scenarios 🎸
-        // ============================================================================
-
-        // E-commerce product search
-        const ecommerceSearch = cts.search(
-          cts.andQuery([
-            // Text search in product description
-            cts.orQuery([
-              cts.elementWordQuery(fn.QName('', 'name'), 'smartphone'),
-              cts.elementWordQuery(fn.QName('', 'description'), 'mobile phone')
-            ]),
-            // Price range
-            cts.elementRangeQuery(fn.QName('', 'price'), '>=', 200, '<=', 800),
-            // In stock
-            cts.elementWordQuery(fn.QName('', 'status'), 'available'),
-            // Specific categories
-            cts.orQuery([
-              cts.collectionQuery('/products/electronics'),
-              cts.collectionQuery('/products/mobile')
-            ]),
-            // Minimum rating
-            cts.elementRangeQuery(fn.QName('', 'rating'), '>=', 4.0)
-          ])
-        );
-
-        // Content management search
-        const cmsSearch = cts.search(
-          cts.andQuery([
-            // Content type
-            cts.elementWordQuery(fn.QName('', 'type'), 'article'),
-            // Published content only
-            cts.elementWordQuery(fn.QName('', 'status'), 'published'),
-            // Date range
-            cts.elementRangeQuery(
-              fn.QName('', 'publish-date'),
-              '>=',
-              xs.date('2024-01-01')
-            ),
-            // Topic search
-            cts.orQuery([
-              cts.elementWordQuery(fn.QName('', 'title'), 'artificial intelligence'),
-              cts.elementWordQuery(fn.QName('', 'tags'), 'AI'),
-              cts.elementWordQuery(fn.QName('', 'category'), 'technology')
-            ]),
-            // Author filter
-            cts.elementWordQuery(fn.QName('', 'author'), 'tech team')
-          ])
-        );
-
-        // ============================================================================
-        // 🎸 GEOSPATIAL SEARCHES - Location Like Rush's Canadian Roots 🎸
-        // ============================================================================
-
-        // Point within radius search
-        const geoPointSearch = cts.search(
-          cts.elementGeospatialQuery(
-            fn.QName('', 'location'),
-            cts.circle(10, cts.point(43.6532, -79.3832))  // 10km radius from Toronto
-          )
-        );
-
-        // Region search
-        const geoRegionSearch = cts.search(
-          cts.elementGeospatialQuery(
-            fn.QName('', 'coordinates'),
-            cts.polygon([
-              cts.point(45.0, -75.0),  // Ottawa area polygon
-              cts.point(45.5, -75.0),
-              cts.point(45.5, -74.5),
-              cts.point(45.0, -74.5)
-            ])
-          )
-        );
-
-        // ============================================================================
-        // 🎸 FULL-TEXT SEARCH WITH HIGHLIGHTING - Make Results Shine 🎸
-        // ============================================================================
-
-        // Search with snippet extraction
-        const searchWithSnippets =
-          for $doc in cts.search(cts.wordQuery('machine learning'))
-          return object-node {
-            'uri': xdmp.nodeUri($doc),
-            'score': cts.score($doc),
-            'snippet': cts.highlight($doc, cts.wordQuery('machine learning'), '<mark>$1</mark>')
-          };
-
-        // ============================================================================
-        // 🎸 PERFORMANCE OPTIMIZATION - Fast Like Alex Lifeson's Fingers 🎸
-        // ============================================================================
-
-        // Optimized search with constraints
-        const optimizedSearch = cts.search(
-          cts.andQuery([
-            cts.collectionQuery('/recent-docs'),  // Limit scope first
-            cts.wordQuery('tutorial'),
-            cts.elementRangeQuery(fn.QName('', 'priority'), '>=', 3)
-          ]),
-          ['unfiltered', 'score-zero'],  // Performance options
-          0  // No quality threshold for speed
-        );
-
-        // Use indexes for better performance
-        const indexOptimizedSearch = cts.search(
-          cts.elementWordQuery(fn.QName('', 'category'), 'technology'),  // Uses element word index
-          ['unfiltered']
-        );
-
-        // ============================================================================
-        // 🎸 ERROR HANDLING AND VALIDATION - Robust Like Rush's 40+ Year Career 🎸
-        // ============================================================================
-
-        // Safe search with error handling
-        try {
-          const safeSearch = cts.search(
-            cts.andQuery([
-              cts.wordQuery(searchTerm),
-              cts.collectionQuery(collectionName)
-            ])
-          );
-
-          if (fn.empty(safeSearch)) {
-            console.log('🎸 No results found - try expanding your search terms');
-          } else {
-            console.log(`🎸 Found ${fn.count(safeSearch)} epic results!`);
-          }
-        } catch (error) {
-          console.log('🔥 Search failed:', error);
-          // Fallback to simpler search
-          const fallbackSearch = cts.search(cts.wordQuery(searchTerm));
-        }
-
-        // 🎸 End of Epic MarkLogic CTS Examples - Rock on with your searches! 🎸
-        // 🎸 End of Epic MarkLogic CTS Examples - Rock on with your searches! 🎸
-        """;
-  }
-
-  /**
-   * 🎸 EPIC MARKLOGIC SEARCH EXECUTION METHOD! 🎸
-   * Execute CTS query against MarkLogic database using /v1/search endpoint
-   */
-  private String executeMarkLogicSearch(String ctsQuery) {
-    try {
-      logger.debug("🎸 Preparing to execute CTS query against MarkLogic");
-
-      // Clean up the CTS query - remove markdown formatting if present
-      String cleanQuery = ctsQuery;
-      if (cleanQuery.contains("```json")) {
-        cleanQuery = cleanQuery.replaceAll("```json\\s*", "").replaceAll("```\\s*", "").trim();
-      }
-      cleanQuery = """
-          {
-            "query": {
-              "and-query": {
-                "queries": [
-                  {
-                    "collection-query": {
-                      "uri": ["red"]
-                    }
-                  }
-                ]
-              }
-            }
-          }
-                    """;
-
-      logger.debug("🎸 Cleaned CTS query: {}", cleanQuery);
-
-      // Create search request payload for /v1/search endpoint
-      // The CTS query goes in the "search" object with a "query" property
-      String searchPayload = String.format("""
-          {
-            "search": {
-              "query": %s,
-              "options": {
-                "page-length": 10,
-                "return-results": true,
-                "return-facets": false,
-                "return-metrics": true,
-                "return-plan": false
-              }
-            }
-          }
-          """, cleanQuery);
-
-      logger.debug("🎸 Search payload prepared: {}", searchPayload);
-
-      // Execute the search using MarkLogic Java Client
-      try {
-        // Use the search endpoint via the DatabaseClient
-        com.marklogic.client.io.StringHandle payload = new com.marklogic.client.io.StringHandle(searchPayload);
-        payload.setFormat(com.marklogic.client.io.Format.JSON);
-
-        QueryManager queryManager = databaseClient.newQueryManager();
-        QueryDefinition query = queryManager.newRawStructuredQueryDefinitionAs(Format.JSON, searchPayload);
-        JacksonHandle result = queryManager.search(query, new JacksonHandle());
-        JsonNode retrievedJsonNode = result.get();
-        String searchResults = retrievedJsonNode.toPrettyString();
-        logger.debug("🎸 Raw search results received: {}", searchResults);
-
-        // Validate and format the results
-        if (searchResults != null && !searchResults.trim().isEmpty()) {
-          logger.info("🎸 Successfully executed MarkLogic search - {} characters returned", searchResults.length());
-          return searchResults;
-        } else {
-          logger.warn("🎸 Search executed but returned empty results");
-          return "{ \"results\": [], \"total\": 0, \"message\": \"No results found for the search criteria\" }";
-        }
-
-      } catch (Exception clientException) {
-        logger.error("🔥 MarkLogic client execution failed: {}", clientException.getMessage(), clientException);
-
-        // Try alternative approach using REST API directly
-        logger.debug("🎸 Attempting fallback REST API approach");
-        return executeSearchViaRestAPI(cleanQuery);
-      }
-
-    } catch (Exception e) {
-      logger.error("💥 Search execution failed: {}", e.getMessage(), e);
-      throw new RuntimeException("🔥 Epic search execution failure: " + e.getMessage(), e);
-    }
-  }
-
-  /**
-   * 🎸 Fallback search execution via REST API
-   */
-  private String executeSearchViaRestAPI(String ctsQuery) {
-    try {
-      logger.debug("🎸 Executing search via REST API fallback");
-
-      // For now, return a structured response indicating the method was called
-      // This can be enhanced with actual HTTP client calls to MarkLogic REST API
-      String fallbackResponse = String.format("""
-          {
-            "search-response": {
-              "total": 0,
-              "start": 1,
-              "page-length": 10,
-              "results": [],
-              "metrics": {
-                "query-resolution-time": "PT0.001S",
-                "facet-resolution-time": "PT0.001S",
-                "snippet-resolution-time": "PT0.000S",
-                "total-time": "PT0.001S"
-              },
-              "message": "Search executed via REST API fallback - actual implementation pending",
-              "query": %s
-            }
-          }
-          """, ctsQuery);
-
-      logger.info("🎸 REST API fallback response generated");
-      return fallbackResponse;
-
-    } catch (Exception e) {
-      logger.error("💥 REST API fallback also failed: {}", e.getMessage(), e);
-      throw new RuntimeException("🔥 All search execution methods failed: " + e.getMessage(), e);
-    }
   }
 
   /**
