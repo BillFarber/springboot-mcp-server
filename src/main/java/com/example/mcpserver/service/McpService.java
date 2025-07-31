@@ -677,20 +677,10 @@ public class McpService {
                 // Execute the search using MarkLogic database
                 String searchResults = executeMarkLogicStructuredSearch(generatedStructuredQuery);
 
-                // Format the response with actual search results
-                String formattedResponse = String.format(
-                    "🎸 EPIC MARKLOGIC SEARCH EXECUTED! 🎸\n\n" +
-                        "Search request: \"%s\"\n\n" +
-                        "Generated Structured Query:\n" +
-                        "```json\n%s\n```\n\n" +
-                        "🚀 SEARCH RESULTS:\n" +
-                        "```json\n%s\n```\n\n" +
-                        "🎸 Live search results from MarkLogic database - ROCK ON!",
-                    searchPrompt, generatedStructuredQuery, searchResults);
-
-                result.put("content", List.of(Map.of("type", "text", "text", formattedResponse)));
+                // Return only the search results after successful execution
+                result.put("content", List.of(Map.of("type", "text", "text", searchResults)));
                 result.put("isError", false);
-                result.put("mimeType", "text/markdown");
+                result.put("mimeType", "application/json");
 
                 // 🎸 Add comprehensive metadata with actual results
                 Map<String, Object> metadata = Map.of(

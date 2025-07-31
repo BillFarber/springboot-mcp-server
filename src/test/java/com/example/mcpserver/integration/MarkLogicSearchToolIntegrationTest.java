@@ -99,14 +99,14 @@ class MarkLogicSearchToolIntegrationTest {
                     .andExpect(jsonPath("$.id").value(2))
                     .andExpect(jsonPath("$.result.content").isArray())
                     .andExpect(jsonPath("$.result.isError").value(false))
-                    .andExpect(jsonPath("$.result.mimeType").value("text/markdown"))
+                    .andExpect(jsonPath("$.result.mimeType").value("application/json"))
                     .andReturn();
 
-            // Verify response content
+            // Verify response content contains search results
             String responseContent = result.getResponse().getContentAsString();
-            assertTrue(responseContent.contains("MarkLogic"));
-            assertTrue(responseContent.contains("Structured Query"));
-            assertTrue(responseContent.contains("machine learning"));
+            assertTrue(responseContent.contains("snippet-format"));
+            assertTrue(responseContent.contains("total"));
+            assertTrue(responseContent.contains("results"));
         }
 
         @Test
@@ -194,22 +194,18 @@ class MarkLogicSearchToolIntegrationTest {
                     .andExpect(jsonPath("$.jsonrpc").value("2.0"))
                     .andExpect(jsonPath("$.id").value(5))
                     .andExpect(jsonPath("$.result.isError").value(false))
-                    .andExpect(jsonPath("$.result.mimeType").value("text/markdown"))
+                    .andExpect(jsonPath("$.result.mimeType").value("application/json"))
                     .andReturn();
 
-            // Verify complex query generation
+            // Verify complex query generation returns only search results
             String responseContent = result.getResponse().getContentAsString();
-            assertTrue(responseContent.contains("MarkLogic"));
-            assertTrue(responseContent.contains("Structured Query"));
-            assertTrue(responseContent.contains("```json"));
+            assertTrue(responseContent.contains("search-response") || responseContent.contains("snippet-format"));
+            assertTrue(responseContent.contains("total"));
+            assertTrue(responseContent.contains("results"));
 
-            // Should contain some relevant search terms
-            boolean containsRelevantTerms = responseContent.contains("neural") ||
-                    responseContent.contains("networks") ||
-                    responseContent.contains("deep") ||
-                    responseContent.contains("learning") ||
-                    responseContent.contains("research");
-            assertTrue(containsRelevantTerms, "Response should contain relevant search terms");
+            // Should contain MarkLogic search result structure
+            assertTrue(responseContent.contains("metrics"));
+            assertTrue(responseContent.contains("query-resolution-time") || responseContent.contains("total-time"));
         }
 
         @Test
@@ -390,15 +386,16 @@ class MarkLogicSearchToolIntegrationTest {
                     .content(objectMapper.writeValueAsString(mcpRequest)))
                     .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.result.mimeType").value("text/markdown"))
+                    .andExpect(jsonPath("$.result.mimeType").value("application/json"))
                     .andExpect(jsonPath("$.result.content").isArray())
                     .andExpect(jsonPath("$.result.content[0].type").value("text"))
                     .andExpect(jsonPath("$.result.content[0].text").exists())
                     .andReturn();
 
-            // Verify markdown formatting
+            // Verify JSON formatting and MarkLogic search result structure
             String responseContent = result.getResponse().getContentAsString();
-            assertTrue(responseContent.contains("```json") || responseContent.contains("MarkLogic"));
+            assertTrue(responseContent.contains("snippet-format") || responseContent.contains("total")
+                    || responseContent.contains("results"));
         }
 
         @Test
