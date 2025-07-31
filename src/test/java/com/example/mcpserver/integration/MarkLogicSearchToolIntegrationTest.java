@@ -99,14 +99,14 @@ class MarkLogicSearchToolIntegrationTest {
                     .andExpect(jsonPath("$.id").value(2))
                     .andExpect(jsonPath("$.result.content").isArray())
                     .andExpect(jsonPath("$.result.isError").value(false))
-                    .andExpect(jsonPath("$.result.mimeType").value("application/json"))
+                    .andExpect(jsonPath("$.result.mimeType").value("text/markdown"))
                     .andReturn();
 
-            // Verify response content contains search results
+            // Verify response content contains search results formatted as Markdown table
             String responseContent = result.getResponse().getContentAsString();
-            assertTrue(responseContent.contains("snippet-format"));
-            assertTrue(responseContent.contains("total"));
-            assertTrue(responseContent.contains("results"));
+            assertTrue(responseContent.contains("MarkLogic Search Results"));
+            assertTrue(responseContent.contains("Search Summary"));
+            assertTrue(responseContent.contains("Performance Metrics"));
         }
 
         @Test
@@ -194,18 +194,18 @@ class MarkLogicSearchToolIntegrationTest {
                     .andExpect(jsonPath("$.jsonrpc").value("2.0"))
                     .andExpect(jsonPath("$.id").value(5))
                     .andExpect(jsonPath("$.result.isError").value(false))
-                    .andExpect(jsonPath("$.result.mimeType").value("application/json"))
+                    .andExpect(jsonPath("$.result.mimeType").value("text/markdown"))
                     .andReturn();
 
-            // Verify complex query generation returns only search results
+            // Verify complex query generation returns formatted Markdown table
             String responseContent = result.getResponse().getContentAsString();
-            assertTrue(responseContent.contains("search-response") || responseContent.contains("snippet-format"));
-            assertTrue(responseContent.contains("total"));
-            assertTrue(responseContent.contains("results"));
+            assertTrue(responseContent.contains("MarkLogic Search Results"));
+            assertTrue(responseContent.contains("Search Summary"));
+            assertTrue(responseContent.contains("Performance Metrics"));
 
-            // Should contain MarkLogic search result structure
-            assertTrue(responseContent.contains("metrics"));
-            assertTrue(responseContent.contains("query-resolution-time") || responseContent.contains("total-time"));
+            // Should contain epic Markdown table structure
+            assertTrue(responseContent.contains("| Metric | Value |"));
+            assertTrue(responseContent.contains("Total Results"));
         }
 
         @Test
@@ -386,16 +386,17 @@ class MarkLogicSearchToolIntegrationTest {
                     .content(objectMapper.writeValueAsString(mcpRequest)))
                     .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.result.mimeType").value("application/json"))
+                    .andExpect(jsonPath("$.result.mimeType").value("text/markdown"))
                     .andExpect(jsonPath("$.result.content").isArray())
                     .andExpect(jsonPath("$.result.content[0].type").value("text"))
                     .andExpect(jsonPath("$.result.content[0].text").exists())
                     .andReturn();
 
-            // Verify JSON formatting and MarkLogic search result structure
+            // Verify Markdown formatting and epic table structure
             String responseContent = result.getResponse().getContentAsString();
-            assertTrue(responseContent.contains("snippet-format") || responseContent.contains("total")
-                    || responseContent.contains("results"));
+            assertTrue(responseContent.contains("MarkLogic Search Results") ||
+                    responseContent.contains("Epic Data Quest") ||
+                    responseContent.contains("Search Summary"));
         }
 
         @Test

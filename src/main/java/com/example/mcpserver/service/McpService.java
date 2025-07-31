@@ -2,6 +2,7 @@ package com.example.mcpserver.service;
 
 import com.example.mcpserver.model.Tool;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.mcpserver.model.Resource;
 import com.example.mcpserver.model.ResourceTemplate;
 import com.example.mcpserver.model.ResourceSubscription;
@@ -677,20 +678,24 @@ public class McpService {
                 // Execute the search using MarkLogic database
                 String searchResults = executeMarkLogicStructuredSearch(generatedStructuredQuery);
 
-                // Return only the search results after successful execution
-                result.put("content", List.of(Map.of("type", "text", "text", searchResults)));
-                result.put("isError", false);
-                result.put("mimeType", "application/json");
+                // 🎸 Format the search results in a righteous Markdown table! 🎸
+                String formattedResults = formatSearchResultsAsMarkdownTable(searchResults, searchPrompt);
 
-                // 🎸 Add comprehensive metadata with actual results
+                // Return the formatted search results after successful execution
+                result.put("content", List.of(Map.of("type", "text", "text", formattedResults)));
+                result.put("isError", false);
+                result.put("mimeType", "text/markdown");
+
+                // 🎸 Add comprehensive metadata with formatted results
                 Map<String, Object> metadata = Map.of(
                     "searchPrompt", searchPrompt,
                     "generatedQuery", generatedStructuredQuery,
                     "searchResults", searchResults,
+                    "formattedOutput", "markdown_table",
                     "queryFormat", "structured_json",
                     "searchFramework", "marklogic_structured",
-                    "toolVersion", "structured_live_search_v1.0",
-                    "executionMode", "live_database",
+                    "toolVersion", "structured_live_search_v2.0_markdown",
+                    "executionMode", "live_database_formatted",
                     "rushQuote",
                     "The trees - all kept equal by hatchet, axe, and saw! Your data is equally accessible!");
                 result.put("metadata", metadata);
@@ -2235,6 +2240,197 @@ public class McpService {
 
       return finalFallbackResponse;
     }
+  }
+
+  /**
+   * 🎸 EPIC MARKDOWN TABLE FORMATTER FOR SEARCH RESULTS! 🎸
+   * Transform MarkLogic JSON search results into righteous Markdown tables
+   * Like Rush transforms progressive rock into epic symphonies!
+   */
+  private String formatSearchResultsAsMarkdownTable(String jsonResults, String searchPrompt) {
+    try {
+      logger.debug("🎸 Formatting search results as epic Markdown table");
+
+      StringBuilder markdown = new StringBuilder();
+
+      // Add epic header with Rush-style flair
+      markdown.append("# 🎸 MarkLogic Search Results - Epic Data Quest! 🎸\n\n");
+      markdown.append("**Search Query:** `").append(searchPrompt).append("`\n\n");
+
+      // Parse the JSON response
+      ObjectMapper objectMapper = new ObjectMapper();
+      JsonNode rootNode = objectMapper.readTree(jsonResults);
+
+      // Extract search response information
+      JsonNode searchResponse = rootNode.path("search-response");
+      if (searchResponse.isMissingNode()) {
+        searchResponse = rootNode; // Fallback if structure is different
+      }
+
+      // Add summary information
+      int total = searchResponse.path("total").asInt(0);
+      int start = searchResponse.path("start").asInt(1);
+      int pageLength = searchResponse.path("page-length").asInt(10);
+
+      markdown.append("## 📊 Search Summary\n\n");
+      markdown.append("| Metric | Value |\n");
+      markdown.append("|--------|-------|\n");
+      markdown.append("| **Total Results** | ").append(total).append(" |\n");
+      markdown.append("| **Results Shown** | ").append(start).append(" - ")
+          .append(Math.min(start + pageLength - 1, total)).append(" |\n");
+      markdown.append("| **Page Length** | ").append(pageLength).append(" |\n\n");
+
+      // Add performance metrics if available
+      JsonNode metrics = searchResponse.path("metrics");
+      if (!metrics.isMissingNode()) {
+        markdown.append("## ⚡ Performance Metrics\n\n");
+        markdown.append("| Metric | Time |\n");
+        markdown.append("|--------|------|\n");
+
+        if (!metrics.path("query-resolution-time").isMissingNode()) {
+          markdown.append("| **Query Resolution** | ").append(metrics.path("query-resolution-time").asText())
+              .append(" |\n");
+        }
+        if (!metrics.path("facet-resolution-time").isMissingNode()) {
+          markdown.append("| **Facet Resolution** | ").append(metrics.path("facet-resolution-time").asText())
+              .append(" |\n");
+        }
+        if (!metrics.path("snippet-resolution-time").isMissingNode()) {
+          markdown.append("| **Snippet Resolution** | ").append(metrics.path("snippet-resolution-time").asText())
+              .append(" |\n");
+        }
+        if (!metrics.path("total-time").isMissingNode()) {
+          markdown.append("| **Total Time** | ").append(metrics.path("total-time").asText()).append(" |\n");
+        }
+        markdown.append("\n");
+      }
+
+      // Process results array
+      JsonNode results = searchResponse.path("results");
+      if (results.isArray() && results.size() > 0) {
+        markdown.append("## 🔍 Search Results\n\n");
+
+        // Create results table
+        markdown.append("| # | URI | Format | Score | Snippet |\n");
+        markdown.append("|---|-----|---------|--------|----------|\n");
+
+        int resultIndex = start;
+        for (JsonNode result : results) {
+          String uri = result.path("uri").asText("N/A");
+          String format = result.path("format").asText("unknown");
+          double score = result.path("score").asDouble(0.0);
+
+          // Extract snippet or content preview
+          String snippet = extractSnippetFromResult(result);
+          if (snippet.length() > 100) {
+            snippet = snippet.substring(0, 97) + "...";
+          }
+
+          // Clean up snippet for table display
+          snippet = snippet.replaceAll("\\r?\\n", " ").replaceAll("\\|", "\\\\|").trim();
+          if (snippet.isEmpty()) {
+            snippet = "*No snippet available*";
+          }
+
+          markdown.append("| ").append(resultIndex).append(" | ");
+          markdown.append("`").append(uri).append("` | ");
+          markdown.append(format).append(" | ");
+          markdown.append(String.format("%.3f", score)).append(" | ");
+          markdown.append(snippet).append(" |\n");
+
+          resultIndex++;
+        }
+        markdown.append("\n");
+      } else {
+        markdown.append("## 🔍 Search Results\n\n");
+        markdown.append("🎵 *No results found - like a song in search of a melody* 🎵\n\n");
+        markdown.append("Try adjusting your search criteria or exploring different terms.\n\n");
+      }
+
+      // Add facets if available
+      JsonNode facets = searchResponse.path("facets");
+      if (!facets.isMissingNode() && facets.isObject()) {
+        markdown.append("## 📈 Search Facets\n\n");
+
+        facets.fields().forEachRemaining(facetEntry -> {
+          String facetName = facetEntry.getKey();
+          JsonNode facetData = facetEntry.getValue();
+
+          markdown.append("### ").append(facetName).append("\n\n");
+
+          JsonNode facetValues = facetData.path("facetValues");
+          if (facetValues.isArray() && facetValues.size() > 0) {
+            markdown.append("| Value | Count |\n");
+            markdown.append("|-------|-------|\n");
+
+            for (JsonNode facetValue : facetValues) {
+              String value = facetValue.path("name").asText();
+              int count = facetValue.path("count").asInt(0);
+              markdown.append("| ").append(value).append(" | ").append(count).append(" |\n");
+            }
+            markdown.append("\n");
+          }
+        });
+      }
+
+      // Add epic footer with Rush quote
+      markdown.append("---\n\n");
+      markdown.append("🎸 *\"The trees are all kept equal by hatchet, axe, and saw!\"* - Rush\n\n");
+      markdown.append("🚀 **Your MarkLogic data is equally accessible through epic search!**\n");
+
+      logger.info("🎸 Successfully formatted search results as righteous Markdown table!");
+      return markdown.toString();
+
+    } catch (Exception e) {
+      logger.error("🔥 Failed to format search results as Markdown table: {}", e.getMessage(), e);
+
+      // Fallback to raw JSON with context
+      return String.format(
+          "# 🎸 MarkLogic Search Results (Raw JSON) 🎸\n\n" +
+              "**Search Query:** `%s`\n\n" +
+              "🔧 *Markdown formatting failed - showing raw results*\n\n" +
+              "```json\n%s\n```\n\n" +
+              "🎸 *The show must go on - even when the format fails!*",
+          searchPrompt, jsonResults);
+    }
+  }
+
+  /**
+   * 🎸 Extract snippet or content preview from search result
+   */
+  private String extractSnippetFromResult(JsonNode result) {
+    // Try different snippet locations based on MarkLogic response format
+    JsonNode snippet = result.path("snippet-format");
+    if (!snippet.isMissingNode() && snippet.isArray() && snippet.size() > 0) {
+      return snippet.get(0).asText();
+    }
+
+    snippet = result.path("snippet");
+    if (!snippet.isMissingNode()) {
+      return snippet.asText();
+    }
+
+    snippet = result.path("content");
+    if (!snippet.isMissingNode()) {
+      return snippet.asText();
+    }
+
+    snippet = result.path("extracted");
+    if (!snippet.isMissingNode()) {
+      return snippet.asText();
+    }
+
+    // Look for any text content in matches
+    JsonNode matches = result.path("matches");
+    if (matches.isArray() && matches.size() > 0) {
+      JsonNode firstMatch = matches.get(0);
+      JsonNode matchText = firstMatch.path("match-text");
+      if (!matchText.isMissingNode() && matchText.isArray() && matchText.size() > 0) {
+        return matchText.get(0).asText();
+      }
+    }
+
+    return "";
   }
 
 }
